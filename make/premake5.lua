@@ -43,14 +43,13 @@ project "TinyPCL"
 	kind "StaticLib"
 	includedirs { 
 		"../include",
-		"../src",
-		"../DetourTileCache/Include",
-		"../Recast/Include"
+		"../src/**",
 	}
 	files { 
-		"*.h",
-		"*.hpp",
-		"*.cpp"
+		"../include/**.h",
+		"../src/**.h",
+		"../include/**.cpp",
+		"../src/**.cpp",
 	}
 
 
