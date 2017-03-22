@@ -10,6 +10,9 @@
 #ifndef __sldrcr_sp_H
 #define __sldrcr_sp_H
 
+#include "vec.h"
+
+
 /******************************************************************************
 *                                   IMPORTED                                  *
 ******************************************************************************/
@@ -21,17 +24,14 @@
 #define DLL_Entry __declspec(dllimport)
 #endif
 
-#include <vector>
-
-namespace SLDR
-{
 
   /******************************************************************************
   *                        INCOMPLETE CLASS DECLARATIONS                        *
   ******************************************************************************/
-  struct CRegDictionaryEntry;    // registration Dictionary entry
-  struct CRegDictionary;         // registration Dictionary
 
+namespace tpcl
+{
+  class  CRegDictionary;         // registration Dictionary
 
   /******************************************************************************
   *                              EXPORTED CLASSES                               *
@@ -56,27 +56,26 @@ namespace SLDR
     CCoarseRegister();
 
     /** destructor */
-    virtual ~CCoarseRegister(); 
+    virtual ~CCoarseRegister();
 
 
-    /** Build dictionary from global point cloud 
-    * @param Xi_pts           point cloud 
-    * @param Xi_lineWidth     width of the polar depth map
-    * @param Xi_numlines      height of the polar depth map */
-    void BuildDictionary(int Xi_numPts, const D3DXVECTOR3* Xi_pts);
+    /** Build dictionary from global point cloud. Xi_pts IS being altered.
+    * @param Xi_pts           point cloud */
+    void BuildDictionary(int Xi_numPts, const CVec3* Xi_pts);
 
 
     /** Create and get list of registration matches for a local point cloud
     * @param Xi_maxCandidates     maximum number of matches to return.
-    * @param Xi_pts               local point cloud
-    * @param Xi_origin            measured/approximate origin.
-    * @param Xi_origin            measured/approximate origin. */
-    void GetLocalRegistrationCandidates(int Xi_maxCandidates, int Xi_numPts, const D3DXVECTOR3* Xi_pts, D3DXVECTOR3& Xi_origin, CRegDictionaryEntry* Xo_candidates, float* Xo_grades);
+    * @param Xi_pts               local point cloud.
+    * @param Xi_originApprox      measured/approximate origin.
+    * @param Xo_candidates        indices of the candidates in the dictionary.
+    * @return                     number of candidates.*/
+    int GetLocalRegistrationCandidates(int Xi_maxCandidates, int Xi_numPts, const CVec3* Xi_pts, CVec3 Xi_originApprox, int* Xo_candidates);
 
 
     /** Get best registration match from created candidates list.
-     * @return grade of best match  */
-    float GetLocalRegistration(CRegDictionaryEntry *best);
+    * @return grade of best match  */
+    void GetLocalRegistration(D3DXMATRIX& Xo_best);
 
 
 
@@ -85,13 +84,10 @@ namespace SLDR
     *                             Protected members                               *
     ******************************************************************************/
 
-    CRegDictionary *m_dictionary;
-
-    CRegDictionaryEntry* m_candidates;
-    float* m_grades;
-
-    int m_lineWidth; // width of the polar depth map
-    int m_numlines;  // height of the polar depth map 
+    int m_numPtsGlobal;
+    CVec3* m_ptsGlobal;       ///< a copyu of the original point cloud
+    CRegDictionary* m_dictionary;   ///< internal data used to store features of global cloud
+    void* m_opts;                   ///< implementation specific options
 
     /******************************************************************************
     *                             Protected methods                               *
@@ -105,40 +101,18 @@ namespace SLDR
 
 
 
-  /******************************************************************************
-  *
-  *: Class name: CRegDictionaryEntry
-  *
-  *: Abstract:
-  *
-  ******************************************************************************/
-
-  struct DLL_Entry CRegDictionaryEntry
-  {
-    D3DXVECTOR3 m_pos;
-    int* m_descriptor;
-  };
-
-
-
-  /** another class with the 2nd algorithm proposed by David Avidar */
-  class DLL_Entry CCoarseRegister2 : public CCoarseRegister
-  {
-  public:
-    CCoarseRegister2();
-    virtual void U_CreateDescriptor(float* Xi_polarDistMap, int* Xo_descriptor);
-  };
+  ///** another class with the 2nd algorithm proposed by David Avidar */
+  //class DLL_Entry CCoarseRegister2 : public CCoarseRegister
+  //{
+  //public:
+  //  CCoarseRegister2();
+  //  virtual void U_CreateDescriptor(float* Xi_polarDistMap, int* Xo_descriptor);
+  //};
 
 
 #undef DLL_Entry
 #endif
 
 
-} // namespace SLDR
+} // namespace tpcl
 
-
-/******************************************************************************
-*                            old style typedefs                               *
-******************************************************************************/
-
-typedef SLDR::CCoarseRegister SLDRCR_SP_CCoarseRegister;

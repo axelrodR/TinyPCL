@@ -3,20 +3,40 @@
 *: Package Name: gengmtrx_grid
 *
 ******************************************************************************/
-#include <d3dx9core.h>
-#include "gengmtrx.h"
-#include <ifr\ifrgen\ifrgen_stnd.h>
-#include "gengmtrx_grid.h"
-#include "gengmtrx_mesh.h"
-#include "gengmtrx_int.h"
-#include <ifr\ifrlog\ifrlog.h>
+#include "vec.h"
+//#include <ifr\ifrgen\ifrgen_stnd.h>
+#include "grid.h"
+//#include "gengmtrx_mesh.h"
+//#include <ifr\ifrlog\ifrlog.h>
+#include <stdio.h>
+#include <string.h>
+
+//#ifdef _DEBUG
+//#define new DEBUG_NEW
+//#endif
+
+#define Log   printf
 
 
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
+namespace tpcl
+{
+///////////////////////////////////////////////////////////////////////////////
+//
+//                            GenGmtrx::CVertexUV
+//
+// a vertex with UV coordinates
+///////////////////////////////////////////////////////////////////////////////
+struct CVertexUV
+{
+  CVec3 m_vtx;      ///< vertex
+  CVec3 m_uv;       ///< uv
+  CVertexUV() {}
+  CVertexUV(const CVec3& vtx, const CVec3& uv) { m_vtx = vtx, m_uv = uv; }
+};
 
-namespace GenGmtrx{
+
+
+
 
 /******************************************************************************
 *                             INTERNAL CONSTANTS                              *
@@ -61,7 +81,7 @@ template<class T> inline T Clamp(T v, T mn, T mx) { return v < mn ? mn : (v > mx
 *: Method name: GENGMTRX_GRID_CGrid
 *
 ******************************************************************************/
-CGrid2dBase::CGrid2dBase(const D3DXVECTOR3& Xi_bbMin, const D3DXVECTOR3& Xi_bbMax, float Xi_res, int Xi_stride)
+CGrid2dBase::CGrid2dBase(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res, int Xi_stride)
 {
   m_bbMin = Xi_bbMin;
   m_res = Xi_res;
@@ -89,11 +109,11 @@ CGrid2dBase::CGrid2dBase(const D3DXVECTOR3& Xi_bbMin, const D3DXVECTOR3& Xi_bbMa
     Log("Error: Could not create grid size %d x %d. Out of memory?\n", m_width, m_height);
   else
     Log("Created grid size %d x %d.\n", m_width, m_height);
-  m_bbMax = Xi_bbMin + D3DXVECTOR3(m_width*Xi_res, m_height*Xi_res, 1000.0);
+  m_bbMax = Xi_bbMin + CVec3(m_width*Xi_res, m_height*Xi_res, 1000.0);
 }
 
 
-CGrid2dBase::CGrid2dBase(int Xi_width, int Xi_height, const D3DXVECTOR3& Xi_bbMin, float Xi_res, int Xi_stride)
+CGrid2dBase::CGrid2dBase(int Xi_width, int Xi_height, const CVec3& Xi_bbMin, float Xi_res, int Xi_stride)
 {
   m_data = 0;
   m_bbMin = Xi_bbMin;
@@ -122,7 +142,7 @@ CGrid2dBase::CGrid2dBase(int Xi_width, int Xi_height, const D3DXVECTOR3& Xi_bbMi
     Log("Could not create grid size %d x %d. Out of memory?\n", m_width, m_height);
   else
     Log("Created grid size %d x %d.\n", m_width, m_height);
-  m_bbMax = Xi_bbMin + D3DXVECTOR3(Xi_width*Xi_res, Xi_height*Xi_res, 1000.0);
+  m_bbMax = Xi_bbMin + CVec3(Xi_width*Xi_res, Xi_height*Xi_res, 1000.0);
 }
 
 
@@ -147,43 +167,43 @@ void CGrid2dBase::Clear()
 
 
 /** get cell index using world coordinates */
-int CGrid2dBase::GetIndex(const D3DXVECTOR3& Xi_pos) const
+int CGrid2dBase::GetIndex(const CVec3& Xi_pos) const
 {
-  D3DXVECTOR3 l_v = (Xi_pos - m_bbMin) * m_invRes;
+  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
   return GetIndex((int)l_v.x, (int)l_v.y);
 }
 
 
 /** get cell using world coordinates */
-void* CGrid2dBase::Get(const D3DXVECTOR3& Xi_pos)
+void* CGrid2dBase::Get(const CVec3& Xi_pos)
 {
-  D3DXVECTOR3 l_v = (Xi_pos - m_bbMin) * m_invRes;
+  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
   int l_x = (int)l_v.x;
   int l_y = (int)l_v.y;
   return Get(l_x, l_y);
 }
 
 /** get cell using world coordinates */
-const void* CGrid2dBase::Get(const D3DXVECTOR3& Xi_pos) const
+const void* CGrid2dBase::Get(const CVec3& Xi_pos) const
 {
-  D3DXVECTOR3 l_v = (Xi_pos - m_bbMin) * m_invRes;
+  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
   int l_x = (int)l_v.x;
   int l_y = (int)l_v.y;
   return Get(l_x, l_y);
 }
 
 
-void CGrid2dBase::Convert(const D3DXVECTOR3& Xi_pos, int& Xi_cellX, int& Xi_cellY) const
+void CGrid2dBase::Convert(const CVec3& Xi_pos, int& Xi_cellX, int& Xi_cellY) const
 {
-  D3DXVECTOR3 l_v = (Xi_pos - m_bbMin) * m_invRes;
+  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
   Xi_cellX = (int)l_v.x;
   Xi_cellY = (int)l_v.y;
 }
 
 
-void CGrid2dBase::ConvertSafe(const D3DXVECTOR3& Xi_pos, int& Xi_cellX, int& Xi_cellY) const
+void CGrid2dBase::ConvertSafe(const CVec3& Xi_pos, int& Xi_cellX, int& Xi_cellY) const
 {
-  D3DXVECTOR3 l_v = (Xi_pos - m_bbMin) * m_invRes;
+  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
   Xi_cellX = (int)l_v.x;
   Xi_cellY = (int)l_v.y;
   Xi_cellX = Clamp(Xi_cellX, 0, m_width);
@@ -191,19 +211,19 @@ void CGrid2dBase::ConvertSafe(const D3DXVECTOR3& Xi_pos, int& Xi_cellX, int& Xi_
 }
 
 
-void CGrid2dBase::Transform(const D3DXVECTOR3& Xi_shift, float scale)
+void CGrid2dBase::Transform(const CVec3& Xi_shift, float scale)
 {
-  D3DXVECTOR3 l_extent = (m_bbMax - m_bbMin) * scale;
+  CVec3 l_extent = (m_bbMax - m_bbMin) * scale;
   m_bbMin += Xi_shift;
   m_bbMax = m_bbMin + l_extent;
 }
 
 
-bool CGrid2dBase::U_RasterizeTri(const D3DXVECTOR3& Xi_v0, const D3DXVECTOR3& Xi_v1, const D3DXVECTOR3& Xi_v2, int Xi_info)
+bool CGrid2dBase::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_info)
 {
-  CVertexUV l_v0(Xi_v0,D3DXVECTOR2(0,0));
-  CVertexUV l_v1(Xi_v1,D3DXVECTOR2(1,0));
-  CVertexUV l_v2(Xi_v2,D3DXVECTOR2(1,1));
+  CVertexUV l_v0(Xi_v0,CVec3(0,0,0));
+  CVertexUV l_v1(Xi_v1, CVec3(1,0,0));
+  CVertexUV l_v2(Xi_v2, CVec3(1,1,0));
   return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&Xi_info);
 }
 

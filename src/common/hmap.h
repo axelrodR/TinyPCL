@@ -17,7 +17,7 @@
 #ifndef __gengmtrx_hmap_H
 #define __gengmtrx_hmap_H
 
-#include "gengmtrx_grid.h"        // for CGrid2D
+#include "grid.h"        // for CGrid2D
 #include "gengmtrx_mesh.h"        // for IRasterizable
 
 /******************************************************************************
@@ -36,7 +36,7 @@
 #endif
 #endif
 
-namespace GenGmtrx
+namespace tpcl
 {
   /******************************************************************************
   *                             EXPORTED CONSTANTS                              *
