@@ -59,7 +59,7 @@ namespace tpcl
   /// 
   /// Single (top) surface, 2B per cell
   ///////////////////////////////////////////////////////////////////////////////
-  class DLL_Entry CSimpleHgtMap : public CGrid2D<unsigned short>, public GenGmtrx::IRasterizable
+  class DLL_Entry CSimpleHgtMap : public CGrid2D<unsigned short>, public tpcl::IRasterizable
   {
   public:
     // height resolution
@@ -69,15 +69,15 @@ namespace tpcl
 
     /** Get height */
     float GetZ(int Xi_x, int Xi_y)  const       {return Get(Xi_x,Xi_y) * m_resH + m_bbMin.z;}
-    float GetZ(D3DXVECTOR3& Xi_pos) const       {return Get(Xi_pos) * m_resH + m_bbMin.z;}
+    float GetZ(CVec3& Xi_pos) const       {return Get(Xi_pos) * m_resH + m_bbMin.z;}
     void SetZ(int Xi_x,int Xi_y,float Xi_h)     {Get(Xi_x,Xi_y) = unsigned short((Xi_h-m_bbMin.z)*m_invResH);}      ///< set height
 
     /** get the world position associated with a cell coordinates (corner of a cell) */
-    inline D3DXVECTOR3 GetPos(int Xi_x, int Xi_y) const;
+    inline CVec3 GetPos(int Xi_x, int Xi_y) const;
 
     /** Rasterize a triangle height to the map
      * @param Xi_info  not used */
-    bool U_RasterizeTri(const D3DXVECTOR3& Xi_v0, const D3DXVECTOR3& Xi_v1, const D3DXVECTOR3& Xi_v2, int Xi_info);
+    bool U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_info);
 
     /** Rasterize a triangle height and info/color
      * @param Xi_info  not used */
@@ -87,12 +87,12 @@ namespace tpcl
     // inhertied from IRasterizable
     /** Get vertices with texture */
     virtual const CMesh* U_GetMesh();
-    virtual void U_GetBBox(D3DXVECTOR3& Xo_min, D3DXVECTOR3& Xo_max) const;
+    virtual void U_GetBBox(CVec3& Xo_min, CVec3& Xo_max) const;
     virtual const unsigned int* U_GetTexture(int& Xo_texWidth, int& Xo_texHeight);
 
     /** constructors */
-    CSimpleHgtMap(int Xi_width, int Xi_height, const D3DXVECTOR3& Xi_bbmin, float Xi_res=1.0f);
-    CSimpleHgtMap(const D3DXVECTOR3& Xi_bbMin, const D3DXVECTOR3& Xi_bbMax, float Xi_res=1.0f);
+    CSimpleHgtMap(int Xi_width, int Xi_height, const CVec3& Xi_bbmin, float Xi_res=1.0f);
+    CSimpleHgtMap(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res=1.0f);
     
     /** destructor */
     virtual ~CSimpleHgtMap();
@@ -132,10 +132,10 @@ namespace tpcl
     // wrapper to access spans
     CSpan* Get(int Xi_x, int Xi_y)                  {return *(CSpan**)CGrid2dBase::Get(Xi_x,Xi_y);}    ///< the first span using cell coordinates
     CSpan* Get(int Xi_ind)                          {return *(CSpan**)CGrid2dBase::Get(Xi_ind);}       ///< the first span using an index
-    CSpan* Get(const D3DXVECTOR3& Xi_pos)           {return *(CSpan**)CGrid2dBase::Get(Xi_pos);}       ///< get first span using a world pos
+    CSpan* Get(const CVec3& Xi_pos)           {return *(CSpan**)CGrid2dBase::Get(Xi_pos);}       ///< get first span using a world pos
     const CSpan* Get(int Xi_x, int Xi_y) const      {return *(CSpan**)CGrid2dBase::Get(Xi_x,Xi_y);}    ///< the first span using cell coordinates
     const CSpan* Get(int Xi_ind) const              {return *(CSpan**)CGrid2dBase::Get(Xi_ind);}       ///< the first span using an index
-    const CSpan* Get(const D3DXVECTOR3& Xi_pos) const {return *(CSpan**)CGrid2dBase::Get(Xi_pos);}       ///< get first span using a world pos
+    const CSpan* Get(const CVec3& Xi_pos) const {return *(CSpan**)CGrid2dBase::Get(Xi_pos);}       ///< get first span using a world pos
 
     // height resolution
     float GetHeightRes() const                      {return m_resH;}       ///< get resolution
@@ -146,7 +146,7 @@ namespace tpcl
     int GetSpanCount()  const                       {return m_spanCount;} 
 
     /** Rasterize a triangle into a dynamic height map (rasterization buffer) */
-    bool U_RasterizeTri(const D3DXVECTOR3& Xi_v0, const D3DXVECTOR3& Xi_v1, const D3DXVECTOR3& Xi_v2, int Xi_area);
+    bool U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_area);
 
     /** @brief Rasterize a triangle with texture into a dynamic height map (rasterization buffer)
      * @param Xi_img default: RGB + area (byte) in the alpha channel */
@@ -157,8 +157,8 @@ namespace tpcl
     bool AddSpan(int Xi_x, int Xi_y, int Xi_hBegin, int Xi_hEnd, int Xi_area, int facing, int Xi_mergeThr);
 
     /** constructors */
-    CDynamicHeightMap(int Xi_width, int Xi_height, const D3DXVECTOR3& Xi_bbmin, float Xi_res=1.0f);
-    CDynamicHeightMap(const D3DXVECTOR3& Xi_bbMin, const D3DXVECTOR3& Xi_bbMax, float Xi_res=1.0f);
+    CDynamicHeightMap(int Xi_width, int Xi_height, const CVec3& Xi_bbmin, float Xi_res=1.0f);
+    CDynamicHeightMap(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res=1.0f);
     
     /** destructor */
     virtual ~CDynamicHeightMap();
@@ -220,13 +220,13 @@ namespace tpcl
      * @param Xi_bufSize    size of floats buffer to fill (note: 1 gets top height)
      * @return number of spans
      */
-    int GetHeightAt(const D3DXVECTOR3& Xi_pos, int Xi_bufSize, float* Xo_heights) const;
+    int GetHeightAt(const CVec3& Xi_pos, int Xi_bufSize, float* Xo_heights) const;
 
     /** Get map height by span index (syntactic sugar) */
     inline float GetZ(int Xi_spanId) const;
 
     /** stntactic sugar to get the index of the top span */
-    int GetTopSpanId(const D3DXVECTOR3& Xi_pos) const;
+    int GetTopSpanId(const CVec3& Xi_pos) const;
 
     /** construct from a dynamic height map
     * @param Xi_walkableHeight   open height above surface to be considered "seperate"
@@ -299,13 +299,13 @@ namespace tpcl
     return m_spans[Xi_spanId].y * m_resH + m_bbMin.z;
   }
 
-  inline D3DXVECTOR3 CSimpleHgtMap::GetPos(int Xi_x, int Xi_y) const
+  inline CVec3 CSimpleHgtMap::GetPos(int Xi_x, int Xi_y) const
   {
-    return m_bbMin + D3DXVECTOR3(float(Xi_x)*m_res, float(Xi_y)*m_res, Get(Xi_x, Xi_y) * m_resH);
+    return m_bbMin + CVec3(float(Xi_x)*m_res, float(Xi_y)*m_res, Get(Xi_x, Xi_y) * m_resH);
   }
 
 
-} // namespace GenGmtrx
+} // namespace tpcl
 
 
 #undef DLL_Entry
@@ -316,6 +316,6 @@ namespace tpcl
 *                    OLD STYLE TYPEDEFS                                       *
 ******************************************************************************/
 
-typedef GenGmtrx::CSimpleHgtMap GENGMTRX_HMAP_CSimpleHgtMap;
-typedef GenGmtrx::CDynamicHeightMap GENGMTRX_HMAP_CDynamicHeightMap;
-typedef GenGmtrx::CCompactHeightMap GENGMTRX_HMAP_CCompactHeightMap;
+typedef tpcl::CSimpleHgtMap GENGMTRX_HMAP_CSimpleHgtMap;
+typedef tpcl::CDynamicHeightMap GENGMTRX_HMAP_CDynamicHeightMap;
+typedef tpcl::CCompactHeightMap GENGMTRX_HMAP_CCompactHeightMap;

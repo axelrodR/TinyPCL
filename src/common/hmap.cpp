@@ -3,18 +3,19 @@
 *: Package Name: gengmtrx_hmap
 *
 ******************************************************************************/
-#include <d3dx9core.h>
-#include <ifr\ifrgen\ifrgen_stnd.h>
-#include "gengmtrx_hmap.h"
-#include "gengmtrx_mesh.h"
-#include <ifr\ifrlog\ifrlog.h>
+//#include <d3dx9core.h>
+//#include <ifr\ifrgen\ifrgen_stnd.h>
+#include "hmap.h"
+//#include "gengmtrx_mesh.h"
+//#include <ifr\ifrlog\ifrlog.h>
+#include "vec.h"
 
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
-namespace GenGmtrx 
+namespace tpcl 
 {
 
 /******************************************************************************
@@ -55,7 +56,7 @@ struct CSpanPool
 };
 
 
-bool overlapBounds(const D3DXVECTOR3& amin, const D3DXVECTOR3& amax, const D3DXVECTOR3& bmin, const D3DXVECTOR3& bmax)
+bool overlapBounds(const CVec3& amin, const CVec3& amax, const CVec3& bmin, const CVec3& bmax)
 {
   bool overlap = true;
   overlap = (amin.x > bmax.x|| amax.x < bmin.x) ? false : overlap;
@@ -96,9 +97,9 @@ inline unsigned int Max4C(unsigned int a , unsigned  int b)
 
 
 // divides a convex polygons into two convex polygons on both sides of a line
-static void DividePoly(const D3DXVECTOR3* in, int nin,
-                       D3DXVECTOR3* out1, int* nout1,
-                       D3DXVECTOR3* out2, int* nout2,
+static void DividePoly(const CVec3* in, int nin,
+                       CVec3* out1, int* nout1,
+                       CVec3* out2, int* nout2,
                        float x, int axis)
 {
   float d[12];
@@ -233,7 +234,7 @@ float FindBestHeightResolution(float xi_minZ, float Xi_maxZ, float Xi_xyRes)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-//                           GenGmtrx::CSimpleHgtMap
+//                           tpcl::CSimpleHgtMap
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -242,7 +243,7 @@ float FindBestHeightResolution(float xi_minZ, float Xi_maxZ, float Xi_xyRes)
 ******************************************************************************/
 
 
-CSimpleHgtMap::CSimpleHgtMap(int Xi_width, int Xi_height, const D3DXVECTOR3& Xi_bbmin, float Xi_res)
+CSimpleHgtMap::CSimpleHgtMap(int Xi_width, int Xi_height, const CVec3& Xi_bbmin, float Xi_res)
   : CGrid2D<unsigned short>(Xi_width, Xi_height, Xi_bbmin, Xi_res)
 {
   m_resH = 0.01f;
@@ -253,7 +254,7 @@ CSimpleHgtMap::CSimpleHgtMap(int Xi_width, int Xi_height, const D3DXVECTOR3& Xi_
 }
 
 
-CSimpleHgtMap::CSimpleHgtMap(const D3DXVECTOR3& Xi_bbMin, const D3DXVECTOR3& Xi_bbMax, float Xi_res)
+CSimpleHgtMap::CSimpleHgtMap(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res)
   : CGrid2D<unsigned short>(Xi_bbMin, Xi_bbMax, Xi_res)
 {
   // some automatic setup to fit the scale of the problem. The user should use SetHeightRes() to override
@@ -269,7 +270,7 @@ CSimpleHgtMap::~CSimpleHgtMap()
 }
 
     
-bool CSimpleHgtMap::U_RasterizeTri(const D3DXVECTOR3& Xi_v0, const D3DXVECTOR3& Xi_v1, const D3DXVECTOR3& Xi_v2, int Xi_info)
+bool CSimpleHgtMap::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_info)
 {
   CVertexUV l_v0(Xi_v0,D3DXVECTOR2(0,0));
   CVertexUV l_v1(Xi_v1,D3DXVECTOR2(1,0));
@@ -288,7 +289,7 @@ bool  CSimpleHgtMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_
   const float ch = GetHeightRes();
   const float ich = GetInvHeightRes();
   unsigned short* cells = (unsigned short*)m_data;
-  D3DXVECTOR3 tmin, tmax;
+  CVec3 tmin, tmax;
   const float bz = m_bbMax.z - m_bbMin.z;
 
   // Calculate the bounding box of the triangle.
@@ -310,8 +311,8 @@ bool  CSimpleHgtMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_
   y1 = Clamp(y1, 0, h-1);
 
   // Clip the triangle into all grid cells it touches.
-  D3DXVECTOR3 buf[7*4];
-  D3DXVECTOR3 *in = buf, *inrow = buf+7, *p1 = inrow+7, *p2 = p1+7;
+  CVec3 buf[7*4];
+  CVec3 *in = buf, *inrow = buf+7, *p1 = inrow+7, *p2 = p1+7;
   
   in[0] = Xi_v0.m_vtx;
   in[1] = Xi_v1.m_vtx;
@@ -384,7 +385,7 @@ const CMesh* CSimpleHgtMap::U_GetMesh()
   CMesh* l_mesh = new CMesh(m_numVtx,m_numFaces, false);
   // generate vertices
   int iVtx = 0;
-  D3DXVECTOR3 l_pos = m_bbMin;
+  CVec3 l_pos = m_bbMin;
   for (int iy=0; iy<=h; ++iy)
   {
     l_pos.x = m_bbMin.x;
@@ -400,7 +401,7 @@ const CMesh* CSimpleHgtMap::U_GetMesh()
   int iFace = 0;
   for (int iy=0; iy<h; ++iy)
   {
-    l_pos = D3DXVECTOR3(m_bbMin.x, l_pos.y+m_res, 0);
+    l_pos = CVec3(m_bbMin.x, l_pos.y+m_res, 0);
     for (int ix=0; ix<w; ++ix)
     {
       l_mesh->m_faces[iFace*3]   = ix + iy*(w+1);
@@ -418,7 +419,7 @@ const CMesh* CSimpleHgtMap::U_GetMesh()
 
 
 
-void CSimpleHgtMap::U_GetBBox(D3DXVECTOR3& Xo_min, D3DXVECTOR3& Xo_max) const
+void CSimpleHgtMap::U_GetBBox(CVec3& Xo_min, CVec3& Xo_max) const
 {
   Xo_min = m_bbMin;
   Xo_max = m_bbMax;
@@ -437,7 +438,7 @@ const unsigned int* CSimpleHgtMap::U_GetTexture(int& Xo_texWidth, int& Xo_texHei
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-//                            GenGmtrx::CDynamicHeightMap
+//                            tpcl::CDynamicHeightMap
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -449,7 +450,7 @@ const unsigned int* CSimpleHgtMap::U_GetTexture(int& Xo_texWidth, int& Xo_texHei
 *: Method name: CDynamicHeightMap
 *
 ******************************************************************************/
-CDynamicHeightMap::CDynamicHeightMap(int Xi_width, int Xi_height, const D3DXVECTOR3& Xi_bbmin, float Xi_res)
+CDynamicHeightMap::CDynamicHeightMap(int Xi_width, int Xi_height, const CVec3& Xi_bbmin, float Xi_res)
   : CGrid2dBase(Xi_width, Xi_height, Xi_bbmin, Xi_res, sizeof(CSpan*))
 {
   m_freeList = 0;
@@ -463,7 +464,7 @@ CDynamicHeightMap::CDynamicHeightMap(int Xi_width, int Xi_height, const D3DXVECT
 }
 
 
-CDynamicHeightMap::CDynamicHeightMap(const D3DXVECTOR3& Xi_bbMin, const D3DXVECTOR3& Xi_bbMax, float Xi_res)
+CDynamicHeightMap::CDynamicHeightMap(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res)
   : CGrid2dBase(Xi_bbMin, Xi_bbMax, Xi_res, sizeof(CSpan*))
 {
   m_freeList = 0;
@@ -664,7 +665,7 @@ bool CDynamicHeightMap::AddSpan(int Xi_x, int Xi_y, int Xi_hBegin, int Xi_hEnd, 
 * a variation of Recast/Detour's rcHeightfield.
 * see: https://github.com/recastnavigation/recastnavigation
 ******************************************************************************/
-bool CDynamicHeightMap::U_RasterizeTri(const D3DXVECTOR3& Xi_v0, const D3DXVECTOR3& Xi_v1, const D3DXVECTOR3& Xi_v2, int Xi_area)
+bool CDynamicHeightMap::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_area)
 {
   CVertexUV l_v0(Xi_v0,D3DXVECTOR2(0,0));
   CVertexUV l_v1(Xi_v1,D3DXVECTOR2(1,0));
@@ -689,7 +690,7 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& 
   const float ics = 1.0f / cs;
   const float ch = GetHeightRes();
   const float ich = GetInvHeightRes();
-  D3DXVECTOR3 tmin, tmax;
+  CVec3 tmin, tmax;
   const float bz = m_bbMax.z - m_bbMin.z;
   const float l_imgW = (float)Xi_imgWidth;
   const float l_imgH = (float)Xi_imgHeight;
@@ -708,8 +709,8 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& 
     return true;
 
   // claculate the front facing / back facing
-  D3DXVECTOR3 e1 = Xi_v1.m_vtx - Xi_v0.m_vtx;
-  D3DXVECTOR3 e2 = Xi_v2.m_vtx - Xi_v0.m_vtx;
+  CVec3 e1 = Xi_v1.m_vtx - Xi_v0.m_vtx;
+  CVec3 e2 = Xi_v2.m_vtx - Xi_v0.m_vtx;
   float crossZ = e1.x*e2.y - e2.x*e1.y;
   int backFace = crossZ < 0.0f ? 1 : 0;
 
@@ -799,7 +800,7 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& 
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-//                           GenGmtrx::CCompactHeightMap
+//                           tpcl::CCompactHeightMap
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -994,7 +995,7 @@ CCompactHeightMap::~CCompactHeightMap()
 
 
 
-int CCompactHeightMap::GetHeightAt(const D3DXVECTOR3& Xi_pos, int Xi_bufSize, float* Xo_heights) const
+int CCompactHeightMap::GetHeightAt(const CVec3& Xi_pos, int Xi_bufSize, float* Xo_heights) const
 {
   CCompactCell l_cell = Get(Xi_pos);
   int l_n = 0;
@@ -1011,7 +1012,7 @@ int CCompactHeightMap::GetHeightAt(const D3DXVECTOR3& Xi_pos, int Xi_bufSize, fl
 
 
 
-int CCompactHeightMap::GetTopSpanId(const D3DXVECTOR3& Xi_pos) const
+int CCompactHeightMap::GetTopSpanId(const CVec3& Xi_pos) const
 {
   CCompactCell l_cell = Get(Xi_pos);
   if (l_cell.count == 0)
