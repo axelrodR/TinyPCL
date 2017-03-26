@@ -1,43 +1,24 @@
 /******************************************************************************
 *
-*: Package Name: gengmtrx_grid
+*: Package Name: tpcl_grid
 *
 ******************************************************************************/
 #include "vec.h"
 //#include <ifr\ifrgen\ifrgen_stnd.h>
 #include "grid.h"
-//#include "gengmtrx_mesh.h"
+#include "mesh.h"
+#include "common.h"
 //#include <ifr\ifrlog\ifrlog.h>
 #include <stdio.h>
 #include <string.h>
 
 //#ifdef _DEBUG
-//#define new DEBUG_NEW
+//#define new_file DEBUG_NEW
 //#endif
-
-#define Log   printf
 
 
 namespace tpcl
 {
-///////////////////////////////////////////////////////////////////////////////
-//
-//                            GenGmtrx::CVertexUV
-//
-// a vertex with UV coordinates
-///////////////////////////////////////////////////////////////////////////////
-struct CVertexUV
-{
-  CVec3 m_vtx;      ///< vertex
-  CVec3 m_uv;       ///< uv
-  CVertexUV() {}
-  CVertexUV(const CVec3& vtx, const CVec3& uv) { m_vtx = vtx, m_uv = uv; }
-};
-
-
-
-
-
 /******************************************************************************
 *                             INTERNAL CONSTANTS                              *
 ******************************************************************************/
@@ -70,7 +51,7 @@ template<class T> inline T Clamp(T v, T mn, T mx) { return v < mn ? mn : (v > mx
 ******************************************************************************/
 ///////////////////////////////////////////////////////////////////////////////
 //
-//                           GENGMTRX_GRID_CGrid
+//                           TPCL_GRID_CGrid
 //
 ///////////////////////////////////////////////////////////////////////////////
 /******************************************************************************
@@ -78,7 +59,7 @@ template<class T> inline T Clamp(T v, T mn, T mx) { return v < mn ? mn : (v > mx
 ******************************************************************************/
 /******************************************************************************
 *
-*: Method name: GENGMTRX_GRID_CGrid
+*: Method name: TPCL_GRID_CGrid
 *
 ******************************************************************************/
 CGrid2dBase::CGrid2dBase(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res, int Xi_stride)
@@ -148,7 +129,7 @@ CGrid2dBase::CGrid2dBase(int Xi_width, int Xi_height, const CVec3& Xi_bbMin, flo
 
 /******************************************************************************
 *
-*: Method name: ~GENGMTRX_GRID_CGrid
+*: Method name: ~TPCL_GRID_CGrid
 *
 ******************************************************************************/
 CGrid2dBase::~CGrid2dBase()
@@ -221,7 +202,7 @@ void CGrid2dBase::Transform(const CVec3& Xi_shift, float scale)
 
 bool CGrid2dBase::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_info)
 {
-  CVertexUV l_v0(Xi_v0,CVec3(0,0,0));
+  CVertexUV l_v0(Xi_v0, CVec3(0,0,0));
   CVertexUV l_v1(Xi_v1, CVec3(1,0,0));
   CVertexUV l_v2(Xi_v2, CVec3(1,1,0));
   return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&Xi_info);
@@ -249,4 +230,4 @@ bool CGrid2dBase::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_v1,
 /******************************************************************************
 *                            INTERNAL FUNCTIONS                               *
 ******************************************************************************/
-} // namespace GenGmtrx
+} // namespace tpcl

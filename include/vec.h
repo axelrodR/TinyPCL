@@ -1,14 +1,14 @@
 // File Location: S:\gen\gengmtrx\gengmtrx_vec.h
 /******************************************************************************
 *
-*: Package Name: gengmtrx
+*: Package Name: tpcl
 *
 *: Title:
 *
 ******************************************************************************/
 
-#ifndef __gengmtrx_vec_H
-#define __gengmtrx_vec_H
+#ifndef __tpcl_vec_H
+#define __tpcl_vec_H
 
 #include <math.h>
 
@@ -21,7 +21,7 @@
 #ifndef _LIB_LINK
 #undef DLL_Entry
 
-#ifdef GENGMTRX_EXPORTS
+#ifdef TPCL_EXPORTS
 #define DLL_Entry __declspec(dllexport)
 #else
 #define DLL_Entry __declspec(dllimport)
@@ -41,7 +41,6 @@ struct D3DXMATRIX;
 
 namespace tpcl
 {
-
 
   /******************************************************************************
   *                            EXPORTED CLASSES                                 *
@@ -483,4 +482,4 @@ namespace tpcl
 
 
 #undef DLL_Entry
-#endif // __gengmtrx_vec_H
+#endif // __tpcl_vec_H

@@ -1,19 +1,24 @@
 /******************************************************************************
 *
-*: Package Name: gengmtrx_hmap
+*: Package Name: tpcl_hmap
 *
 ******************************************************************************/
 //#include <d3dx9core.h>
 //#include <ifr\ifrgen\ifrgen_stnd.h>
 #include "hmap.h"
-//#include "gengmtrx_mesh.h"
+#include "mesh.h"
+#include "grid.h"
 //#include <ifr\ifrlog\ifrlog.h>
 #include "vec.h"
-
+#include "common.h"
+#include <string.h>
+#include <stdio.h>
 
 #ifdef _DEBUG
-#define new DEBUG_NEW
+#define new_file DEBUG_NEW
 #endif
+
+#define Log printf
 
 namespace tpcl 
 {
@@ -272,9 +277,9 @@ CSimpleHgtMap::~CSimpleHgtMap()
     
 bool CSimpleHgtMap::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_info)
 {
-  CVertexUV l_v0(Xi_v0,D3DXVECTOR2(0,0));
-  CVertexUV l_v1(Xi_v1,D3DXVECTOR2(1,0));
-  CVertexUV l_v2(Xi_v2,D3DXVECTOR2(1,1));
+  CVertexUV l_v0(Xi_v0, CVec3(0,0, 0));
+  CVertexUV l_v1(Xi_v1, CVec3(1,0, 0));
+  CVertexUV l_v2(Xi_v2, CVec3(1,1, 0));
   return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&Xi_info);
 }
 
@@ -295,10 +300,10 @@ bool  CSimpleHgtMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_
   // Calculate the bounding box of the triangle.
   tmin = Xi_v0.m_vtx;
   tmax = Xi_v0.m_vtx;
-  D3DXVec3Minimize(&tmin, &tmin, &Xi_v1.m_vtx);
-  D3DXVec3Minimize(&tmin, &tmin, &Xi_v2.m_vtx);
-  D3DXVec3Maximize(&tmax, &tmax, &Xi_v1.m_vtx);
-  D3DXVec3Maximize(&tmax, &tmax, &Xi_v2.m_vtx);
+  tmin = Min_ps(tmin, Xi_v1.m_vtx);
+  tmin = Min_ps(tmin, Xi_v2.m_vtx);
+  tmax = Max_ps(tmax, Xi_v1.m_vtx);
+  tmax = Max_ps(tmax, Xi_v2.m_vtx);
 
   // If the triangle does not touch the bbox of the heightfield, skip the triagle.
   if (!overlapBounds(m_bbMin, m_bbMax, tmin, tmax))
@@ -368,7 +373,7 @@ bool  CSimpleHgtMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_
       // Snap the span to the heightfield height grid.
       unsigned int ismax = (unsigned short)Clamp((int)ceilf(smax * ich), 0, 0xffff);
       if (ismax > cells[x+y*w])
-        cells[x+y*w] = ismax;
+        cells[x+y*w] = unsigned short(ismax);
     }
   }
 
@@ -667,9 +672,9 @@ bool CDynamicHeightMap::AddSpan(int Xi_x, int Xi_y, int Xi_hBegin, int Xi_hEnd, 
 ******************************************************************************/
 bool CDynamicHeightMap::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_area)
 {
-  CVertexUV l_v0(Xi_v0,D3DXVECTOR2(0,0));
-  CVertexUV l_v1(Xi_v1,D3DXVECTOR2(1,0));
-  CVertexUV l_v2(Xi_v2,D3DXVECTOR2(1,1));
+  CVertexUV l_v0(Xi_v0,CVec3(0,0, 0));
+  CVertexUV l_v1(Xi_v1,CVec3(1,0, 0));
+  CVertexUV l_v2(Xi_v2,CVec3(1,1, 0));
   return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&Xi_area);
 }
 
@@ -699,10 +704,10 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& 
   // Calculate the bounding box of the triangle.
   tmin = Xi_v0.m_vtx;
   tmax = Xi_v0.m_vtx;
-  D3DXVec3Minimize(&tmin, &tmin, &Xi_v1.m_vtx);
-  D3DXVec3Minimize(&tmin, &tmin, &Xi_v2.m_vtx);
-  D3DXVec3Maximize(&tmax, &tmax, &Xi_v1.m_vtx);
-  D3DXVec3Maximize(&tmax, &tmax, &Xi_v2.m_vtx);
+  tmin = Min_ps(tmin, Xi_v1.m_vtx);
+  tmin = Min_ps(tmin, Xi_v2.m_vtx);
+  tmax = Max_ps(tmax, Xi_v1.m_vtx);
+  tmax = Max_ps(tmax, Xi_v2.m_vtx);
 
   // If the triangle does not touch the bbox of the heightfield, skip the triagle.
   if (!overlapBounds(m_bbMin, m_bbMax, tmin, tmax))
@@ -781,7 +786,7 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& 
 
       // color from the center of the cell
       const float l_dcx = (float)(1.0/ 3.0);
-      D3DXVECTOR2 l_cen = p1[0].m_uv; // (Xi_v0.m_uv + Xi_v1.m_uv + Xi_v2.m_uv) * l_dcx;
+      CVec3 l_cen = p1[0].m_uv; // (Xi_v0.m_uv + Xi_v1.m_uv + Xi_v2.m_uv) * l_dcx;
       int l_cenx = int(l_cen.x * l_imgW);
       int l_ceny = int(l_cen.y * l_imgH);
       int l_area = Xi_img[l_cenx + l_ceny * Xi_imgWidth];

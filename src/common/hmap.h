@@ -1,7 +1,7 @@
 // File Location: S:\gen\gengmtrx\gengmtrx_hmap.h
 /******************************************************************************
 *
-*: Package Name: gengmtrx_hmap
+*: Package Name: tpcl_hmap
 *
 *: Title: Height maps
 *
@@ -14,11 +14,11 @@
                           to represent continous surfaces
 ******************************************************************************/
 
-#ifndef __gengmtrx_hmap_H
-#define __gengmtrx_hmap_H
+#ifndef __tpcl_hmap_H
+#define __tpcl_hmap_H
 
 #include "grid.h"        // for CGrid2D
-#include "gengmtrx_mesh.h"        // for IRasterizable
+#include "mesh.h"        // for IRasterizable
 
 /******************************************************************************
 *                                   IMPORTED                                  *
@@ -28,7 +28,7 @@
 #ifndef _LIB 
 #ifndef _LIB_LINK
 #undef DLL_Entry 
-#ifdef GENGMTRX_EXPORTS
+#ifdef TPCL_EXPORTS
 #define DLL_Entry __declspec(dllexport)
 #else
 #define DLL_Entry __declspec(dllimport)
@@ -46,7 +46,7 @@ namespace tpcl
   *                        INCOMPLETE CLASS DECLARATIONS                        *
   ******************************************************************************/
   struct CSpanPool;                 // in this file
-  struct CVertexUV;                 // in gengmtrx_mesh.h
+  struct CVertexUV;                 // in mesh.h
   struct CCompactSpan;              // in this file
 
   /******************************************************************************
@@ -316,6 +316,6 @@ namespace tpcl
 *                    OLD STYLE TYPEDEFS                                       *
 ******************************************************************************/
 
-typedef tpcl::CSimpleHgtMap GENGMTRX_HMAP_CSimpleHgtMap;
-typedef tpcl::CDynamicHeightMap GENGMTRX_HMAP_CDynamicHeightMap;
-typedef tpcl::CCompactHeightMap GENGMTRX_HMAP_CCompactHeightMap;
+typedef tpcl::CSimpleHgtMap TPCL_HMAP_CSimpleHgtMap;
+typedef tpcl::CDynamicHeightMap TPCL_HMAP_CDynamicHeightMap;
+typedef tpcl::CCompactHeightMap TPCL_HMAP_CCompactHeightMap;

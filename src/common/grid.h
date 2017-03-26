@@ -1,24 +1,25 @@
 // File Location: S:\gen\gengmtrx\gengmtrx_grid.h
 /******************************************************************************
 *
-*: Package Name: gengmtrx_grid
+*: Package Name: tpcl_grid
 *
 *: Title:
 *
 ******************************************************************************/
 
-#ifndef __gengmtrx_grid_H
-#define __gengmtrx_grid_H
+#ifndef __tpcl_grid_H
+#define __tpcl_grid_H
 
 /******************************************************************************
 *                                   IMPORTED                                  *
 ******************************************************************************/
+#include "vec.h"
 
 #define DLL_Entry 
 #ifndef _LIB 
 #ifndef _LIB_LINK
 #undef DLL_Entry 
-#ifdef GENGMTRX_EXPORTS
+#ifdef TPCL_EXPORTS
 #define DLL_Entry __declspec(dllexport)
 #else
 #define DLL_Entry __declspec(dllimport)
@@ -168,7 +169,7 @@ class DLL_Entry CGrid2dBase
     const T& Get(const CVec3& Xi_pos) const {return *(T*)CGrid2dBase::Get(Xi_pos);}       ///< get the cell at a world pos
   };
 
-} // namespace GenGmtrx
+} // namespace tpcl
 
 /******************************************************************************
 *                            EXPORTED FUNCTIONS                               *
