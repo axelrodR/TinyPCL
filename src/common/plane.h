@@ -1,7 +1,27 @@
-// File Location: S:\gen\gengmtrx\gengmtrx_pln.h
+//
+// Copyright (c) 2016-2017 Geosim Ltd.
+// 
+// Written by Ramon Axelrod       ramon.axelrod@gmail.com
+//
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would be
+//    appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//    misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+//
+
+
 /******************************************************************************
 *
-*: Package Name: gengmtrx_pln
+*: Package Name: plane
 *
 *: Title:
 *
@@ -69,7 +89,6 @@ namespace tpcl
     CVec3 GetNormal() const                         { CVec3 v=GetOrtho(); tpcl::Normalize(v); return v; }
 
     /** convert plane to normal form (i.e. A,B,C are the normal vector) */
-    void Normalize()
     { 
       CVec3* v = (CVec3*)&m_A;
       float l = 1.0f / Length(*v);
@@ -170,7 +189,7 @@ namespace tpcl
     static const int FIX_PT_D = 64;         ///< D parameter is is written as 6 bit fixed point
 
     /** set from plane */
-    void Set(const GenGmtrx::CPlane& pl)
+    void Set(const CPlane& pl)
     {
       x = short(pl.m_A*FIX_PT_NORMAL), y = short(pl.m_B*FIX_PT_NORMAL); z = short(pl.m_C*FIX_PT_NORMAL);
       int h = int(pl.m_D*FIX_PT_D);
@@ -182,7 +201,7 @@ namespace tpcl
     /** get a plane from compact form
      * @return true = m_D was encoded, false=m_D was not encoded correctly
      */
-    bool Get(GenGmtrx::CPlane& pl)
+    bool Get(CPlane& pl)
     {
       const float l_invFP1 = 1.0f / FIX_PT_NORMAL,l_invFP2 = 1.0f / FIX_PT_D;
       pl.m_A = float(x)*l_invFP1,    pl.m_B = float(y)*l_invFP1;
@@ -197,7 +216,7 @@ namespace tpcl
       x = short(Xi_x*FIX_PT_NORMAL), y = short(Xi_y*FIX_PT_NORMAL);
       z = short(Xi_z*FIX_PT_NORMAL), w = short(Xi_d*FIX_PT_D);
     }
-    CCompactPlane(const GenGmtrx::CPlane& Xi_pl) {Set(Xi_pl);}
+    CCompactPlane(const CPlane& Xi_pl) {Set(Xi_pl);}
 
     /** accessor */
     short& operator[](int i)                  {return *(&x + i);}

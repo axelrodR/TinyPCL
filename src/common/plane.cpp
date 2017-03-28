@@ -1,10 +1,32 @@
+//
+// Copyright (c) 2016-2017 Geosim Ltd.
+// 
+// Written by Ramon Axelrod       ramon.axelrod@gmail.com
+//
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would be
+//    appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//    misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+//
+
 /******************************************************************************
 *
 *: Package Name: gengmtrx_pln
 *
 ******************************************************************************/
 
-#include "gengmtrx_pln.h"
+#include "plane.h"
+#include "common.h"
+#include "float.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -200,7 +222,7 @@ namespace tpcl
     float l_D;
     if (Xi_normalize)
     {
-      Normalize();
+      Normalize_m();
       l_norm = GetOrtho();
       l_D = m_D = -DotProd(l_norm, l_cent);
     }
@@ -304,8 +326,8 @@ namespace tpcl
 
   float CPlane::Dist(const CVec3& Xi_pt,bool Xi_sign) const
   {
-    float norm = D3DXVec3Length(&GetOrtho());
-    float dot = D3DXVec3Dot(&Xi_pt, &GetOrtho()) + m_D;
+    float norm = Length(GetOrtho());
+    float dot = DotProd(Xi_pt, GetOrtho()) + m_D;
     float dist = dot * (1.0f / norm);
     if (!Xi_sign)
       return fabsf(dist);
@@ -317,8 +339,8 @@ namespace tpcl
 
   float CPlane::GetClosestPt(const CVec3& Xi_pt,CVec3& Xo_closest) const
   {
-    float norm = D3DXVec3Length(&GetOrtho());
-    float dot = D3DXVec3Dot(&Xi_pt,&GetOrtho()) + m_D;
+    float norm = Length(GetOrtho());
+    float dot = DotProd(Xi_pt,GetOrtho()) + m_D;
     float dist = dot * (1.0f / norm);
     Xo_closest = Xi_pt - GetOrtho() * dist;
     return dist;
@@ -330,13 +352,13 @@ namespace tpcl
                           float Xi_thresholdDist, int Xi_AboveBelow, bool Xi_justCount) const
   {
     const CVec3& l_ortho = GetOrtho();
-    float l_norm = D3DXVec3Length(&l_ortho);
+    float l_norm = Length(l_ortho);
     float l_invNorm = 1.0f / l_norm;
 
     int l_n = 0;
     for (int i=0; i<Xi_numPts; ++i)
     {
-      float l_dot = D3DXVec3Dot(Xi_pt+i, &l_ortho) + m_D;
+      float l_dot = DotProd(Xi_pt[i], l_ortho) + m_D;
       float l_dist = l_dot * l_invNorm;
       if (fabsf(l_dist) > Xi_thresholdDist)
       {
@@ -397,8 +419,8 @@ namespace tpcl
       l_dir1 = CVec3(-m_D/m_A,1,0) - l_pt;
       l_dir2 = CVec3(-m_D/m_A,0,1) - l_pt;
     }
-    D3DXVec3Normalize(&l_dir1,&l_dir1);
-    D3DXVec3Normalize(&l_dir2,&l_dir2);
+    Normalize(l_dir1);
+    Normalize(l_dir2);
   }
 
 
@@ -407,7 +429,7 @@ namespace tpcl
   {
     CVec3 l_pl1N = GetOrtho();
     CVec3 l_pl2N = Xi_pl.GetOrtho();
-    CVec3 l_cs = l_pl1N ^ l_pl2N;    // cross product because line must be perpendicular to both planes' normals
+    CVec3 l_cs = CrossProd(l_pl1N, l_pl2N);    // TODO: maybe make cross product with double for more precision.
     float ax = (l_cs.x >= 0 ? l_cs.x : -l_cs.x);
     float ay = (l_cs.y >= 0 ? l_cs.y : -l_cs.y);
     float az = (l_cs.z >= 0 ? l_cs.z : -l_cs.z);

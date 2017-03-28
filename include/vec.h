@@ -1,4 +1,26 @@
-// File Location: S:\gen\gengmtrx\gengmtrx_vec.h
+// File Location: 
+
+//
+// Copyright (c) 2016-2017 Geosim Ltd.
+// 
+// Written by Ramon Axelrod       ramon.axelrod@gmail.com
+//
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would be
+//    appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//    misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+//
+
+
 /******************************************************************************
 *
 *: Package Name: tpcl
@@ -91,6 +113,10 @@ namespace tpcl
   {
     float m[4][4];
 
+    // constructors
+    TMat4() {}
+    inline TMat4(T* Vals);
+
     // addition, subtraction
     inline TMat4& operator+=(const TMat4& u);
     inline TMat4& operator-=(const TMat4& u);
@@ -112,6 +138,10 @@ namespace tpcl
     inline bool operator==(const TMat4& ths) const;
     inline bool operator!=(const TMat4& rhs) const;
   };
+
+ 
+  // multiplication in place
+  template <typename T> inline void Multiply(const TMat4<T>& lhs, const TVec3<T>& rhs, TMat4<T>& res);
 
   typedef TVec3<float> CVec3;
   typedef TMat4<float> CMat4;
@@ -448,6 +478,49 @@ namespace tpcl
     r.m[2][0] = -m[2][0]; r.m[2][1] = -m[2][1]; r.m[0][2] = -m[2][2]; r.m[2][3] = -m[2][3];
     r.m[3][0] = -m[3][0]; r.m[3][1] = -m[3][1]; r.m[0][2] = -m[3][2]; r.m[3][3] = -m[3][3];
     return r;
+  }
+
+  // matrix assignment
+  template <typename T>
+  inline TMat4<T>::TMat4(T* vals)
+  {
+    for (int r = 0; r<4; ++r)
+    {
+      for (int c = 0; c < 4; ++c)
+        mat.m[r][c] = vals[r * 4 + c];
+    }
+  }
+  
+  // matrix multiplication
+  template <typename T>
+  inline void Multiply(const TMat4<T>& lhs, const TVec3<T>& rhs, TMat4<T>& res)
+  {
+    TMat4<T> tmp;
+    for (int r=0; r<4; ++r)
+    {
+      for (int c=0; c<4; ++c)
+        tmp[r][c] = m[r][0]*rhs.m[0][c] + m[r][1]*rhs.m[1][c] + m[r][2]*rhs.m[2][c] + m[r][3]*rhs.m[3][c];
+    }
+    res = tmp;
+  }
+
+  // specialization for floats using SIMD
+  template<> inline void Multiply(const TMat4<float>& lhs, const TVec3<float>& rhs, TMat4<float>& res);
+
+
+  template <typename T>
+  inline TMat4<T>& TMat4<T>::operator*=(const TMat4<T>& rhs)
+  {
+    Multiply(*this, rhs, *this);
+    return *this;
+  }
+  
+  template <typename T>
+  inline TMat4<T> TMat4<T>::operator*(const TMat4<T>& rhs)
+  {
+    TMat4<T> res;
+    Multiply(*this, rhs, res);
+    return res;
   }
 
 
