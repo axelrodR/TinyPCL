@@ -625,9 +625,9 @@ namespace tpcl
   *: Method name: GetLocalRegistration
   *
   ******************************************************************************/
-  void CCoarseRegister::GetLocalRegistration(CMat4& Xo_best)
+  float CCoarseRegister::GetLocalRegistration(CMat4& Xo_best)
   {
-
+    return 0;
   }
 
 

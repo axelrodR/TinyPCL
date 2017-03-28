@@ -90,7 +90,7 @@ namespace tpcl
 
     /** Get best registration match from created candidates list.
     * @return grade of best match  */
-    void GetLocalRegistration(CMat4& Xo_best);
+    float GetLocalRegistration(CMat4& Xo_best);
 
 
 
