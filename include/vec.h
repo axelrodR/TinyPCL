@@ -256,7 +256,7 @@ namespace tpcl
     { return (x==rhs.x && y==rhs.y && z==rhs.z); }
 
   template <typename T>
-  inline TVec3<T> operator*(float lhs, const TVec3<T>& rhs)
+  inline TVec3<T> operator*(T lhs, const TVec3<T>& rhs)
     { return TVec3<T>(lhs*rhs.x, lhs*rhs.y, lhs*rhs.z); }
 
 
@@ -487,7 +487,7 @@ namespace tpcl
     for (int r = 0; r<4; ++r)
     {
       for (int c = 0; c < 4; ++c)
-        mat.m[r][c] = vals[r * 4 + c];
+        m[r][c] = vals[r * 4 + c];
     }
   }
   

@@ -39,13 +39,6 @@
 *                                   IMPORTED                                  *
 ******************************************************************************/
 
-#undef DLL_Entry 
-#ifdef SLDRCR_EXPORTS
-#define DLL_Entry __declspec(dllexport)
-#else
-#define DLL_Entry __declspec(dllimport)
-#endif
-
 
   /******************************************************************************
   *                        INCOMPLETE CLASS DECLARATIONS                        *
@@ -60,7 +53,7 @@ namespace tpcl
   ******************************************************************************/
   /******************************************************************************
   *
-  *: Class name: SLDRCR_SP_CCoarseRegister
+  *: Class name: TPCL_CCoarseRegister
   *
   *: Abstract: Coarse registeration vased on dictionary
   *            Derived from the thesis of David Avidar (Malaach's group)
@@ -68,7 +61,7 @@ namespace tpcl
   *
   ******************************************************************************/
 
-  class DLL_Entry CCoarseRegister
+  class CCoarseRegister
   {
   public:
     /******************************************************************************
@@ -97,7 +90,7 @@ namespace tpcl
 
     /** Get best registration match from created candidates list.
     * @return grade of best match  */
-    void GetLocalRegistration(D3DXMATRIX& Xo_best);
+    void GetLocalRegistration(CMat4& Xo_best);
 
 
 
@@ -132,9 +125,7 @@ namespace tpcl
   //};
 
 
-#undef DLL_Entry
-#endif
-
 
 } // namespace tpcl
 
+#endif
