@@ -157,8 +157,11 @@ namespace tpcl
 
 
 
+
+  
+
   /******************************************************************************
-  *                   INLINE FUNCTIONS (3D vector)                              *
+  *                 INLINE FUNCTIONS IMPLEMENTATION (3D vector)                 *
   ******************************************************************************/
 
   template <typename T>
@@ -273,11 +276,11 @@ namespace tpcl
   // product, angles and normalzation
   template <typename Tvec3>
   inline float DotProd(const Tvec3& lhs, const Tvec3& rhs)
-    { return lhs.x*rhs.x + lhs.y+rhs.y + lhs.z*rhs.z; }
+    { return lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z; }
 
   template <typename Tvec3>
   inline float DotProd2D(const Tvec3& lhs, const Tvec3& rhs)
-    { return lhs.x*rhs.x + lhs.y+rhs.y; }
+    { return lhs.x*rhs.x + lhs.y*rhs.y; }
 
   template <typename Tvec3>
   inline float CosAngle(const Tvec3& lhs, const Tvec3& rhs)
@@ -364,7 +367,7 @@ namespace tpcl
 
 
   /******************************************************************************
-  *                   INLINE FUNCTIONS (4x4 matrix)                              *
+  *               INLINE FUNCTIONS IMPLEMENTATION (4x4 matrix)                  *
   ******************************************************************************/
 
 

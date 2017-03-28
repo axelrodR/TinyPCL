@@ -60,19 +60,19 @@ namespace tpcl
     /// acccesors
     float& Get (int i)                             {return *(&m_A + i);}
     const float& Get (int i) const                 {return *(&m_A + i);}
-    const CVec3& GetOrtho() const            {return *(CVec3*)&m_A;} ///< get orthogonal vector
-    const D3DXVECTOR4& GetAsVec4() const           {return *(D3DXVECTOR4*)&m_A;} ///< get plane as 4-vector
+    const CVec3& GetOrtho() const                  {return *(CVec3*)&m_A;} ///< get orthogonal vector
+    //const D3DXVECTOR4& GetAsVec4() const           {return *(D3DXVECTOR4*)&m_A;} ///< get plane as 4-vector
     void Set(float* Xi_f)                          {m_A=Xi_f[0]; m_B=Xi_f[1]; m_C=Xi_f[2]; m_D=Xi_f[3];}  ///< set
     void Set(float Xi_A,float Xi_B,float Xi_C,float Xi_D)   {m_A=Xi_A; m_B=Xi_B; m_C=Xi_C; m_D=Xi_D;}     ///< set
 
     /** get the normal to the plane */
-    CVec3 GetNormal() const            {CVec3 v=GetOrtho(); return *D3DXVec3Normalize(&v,&v);}
+    CVec3 GetNormal() const                         { CVec3 v=GetOrtho(); tpcl::Normalize(v); return v; }
 
     /** convert plane to normal form (i.e. A,B,C are the normal vector) */
     void Normalize()
     { 
       CVec3* v = (CVec3*)&m_A;
-      float l = 1.0f / D3DXVec3Length(v);
+      float l = 1.0f / Length(*v);
       *v *= l;
       m_D *= l;
     }
