@@ -36,21 +36,6 @@
 ******************************************************************************/
 #include "vec.h"
 
-#define DLL_Entry 
-#ifndef _LIB 
-#ifndef _LIB_LINK
-#undef DLL_Entry 
-#ifdef TPCL_EXPORTS
-#define DLL_Entry __declspec(dllexport)
-#else
-#define DLL_Entry __declspec(dllimport)
-#endif
-#endif
-#endif
-
-#pragma warning (disable : 4251)
-
-
 namespace tpcl
 {
 /******************************************************************************
@@ -74,7 +59,7 @@ struct CVertexUV;
   *: Abstract: baseline of all grids. Use CGrid2D template instead
   ******************************************************************************/
   /** base for 2D grids. Use CGrid2D template instead */
-class DLL_Entry CGrid2dBase
+class CGrid2dBase
   {
   public:
     /******************************************************************************
@@ -212,10 +197,8 @@ class DLL_Entry CGrid2dBase
 
 
 
-#undef DLL_Entry
 #endif
 
-#pragma warning (default : 4251)
 
 /******************************************************************************
 *                    inline function implementation                           *

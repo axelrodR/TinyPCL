@@ -36,18 +36,6 @@
 *                                   IMPORTED                                  *
 ******************************************************************************/
 
-#define DLL_Entry 
-#ifndef _LIB 
-#ifndef _LIB_LINK
-#undef DLL_Entry 
-#ifdef TPCL_EXPORTS
-#define DLL_Entry __declspec(dllexport)
-#else
-#define DLL_Entry __declspec(dllimport)
-#endif
-#endif
-#endif
-
 namespace tpcl
 {
 
@@ -84,7 +72,7 @@ namespace tpcl
   //
   // Simple mesh container used mainly for interfacing between modules
   ///////////////////////////////////////////////////////////////////////////////
-  struct DLL_Entry CMesh
+  struct CMesh
   {
     union
     {
@@ -115,7 +103,7 @@ namespace tpcl
   // Provides interface for getting mesh 
   ///////////////////////////////////////////////////////////////////////////////
 
-  class DLL_Entry IRasterizable
+  class IRasterizable
   {
   public:
     /** Get vertices with texture */
@@ -136,12 +124,4 @@ namespace tpcl
 } // namespace tpcl
 
 
-#undef DLL_Entry
 #endif
-
-
-/******************************************************************************
-*                    OLD STYLE TYPEDEFS                                       *
-******************************************************************************/
-
-typedef tpcl::CMesh TPCL_MESH_CMesh;

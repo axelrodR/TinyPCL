@@ -25,10 +25,6 @@
 #include <vector>
 
 
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
-
 namespace tpcl{
 
 /******************************************************************************
@@ -175,7 +171,7 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
   {
     for (int y=-rad; y<=rad; y++)
     {
-      CInt3 l_c = CInt3(l_cell.x + x, l_cell.y + y, 0);
+      CInt3 l_c = CInt3(float(l_cell.x + x), float(l_cell.y + y), 0.0f);
       MapInt3::const_iterator l_it = l_data->find(l_c);
       if (l_it == l_data->end()) 
         continue; // empty cell
@@ -226,7 +222,7 @@ int CSpatialHash2D::GetNear(const CVec3& Xi_pos, int Xi_bufSize, void** Xo_buf, 
   {
     for (int y=-rad; y<=rad; y++)
     {
-      CInt3 l_c = CInt3(l_cell.x + x, l_cell.y + y, 0);
+      CInt3 l_c = CInt3(float(l_cell.x + x), float(l_cell.y + y), 0.0f);
       MapInt3::const_iterator l_it = l_data->find(l_c);
       if (l_it == l_data->end()) 
         continue;   // empty cell

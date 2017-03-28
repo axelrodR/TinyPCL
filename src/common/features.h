@@ -34,21 +34,12 @@
 #ifndef __sldrcr_ftr_H
 #define __sldrcr_ftr_H
 
-
+#include "SpatialHash.h"
 #include "../../include/vec.h"
 
 /******************************************************************************
 *                                   IMPORTED                                  *
 ******************************************************************************/
-
-#undef DLL_Entry 
-#ifdef SLDRCR_EXPORTS
-#define DLL_Entry __declspec(dllexport)
-#else
-#define DLL_Entry __declspec(dllimport)
-#endif
-
-
 
 
 /******************************************************************************
@@ -76,7 +67,7 @@ namespace tpcl
   *
   ******************************************************************************/
 
-  class DLL_Entry Features
+  class Features
   {
   public:
     /******************************************************************************
@@ -115,10 +106,6 @@ namespace tpcl
   };
  
 
-#undef DLL_Entry
-#endif
-
-
 } // namespace tpcl
 
-
+#endif

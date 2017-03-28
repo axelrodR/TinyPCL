@@ -37,18 +37,6 @@
 *                                   IMPORTED                                  *
 ******************************************************************************/
 
-#define DLL_Entry 
-#ifndef _LIB 
-#ifndef _LIB_LINK
-#undef DLL_Entry 
-#ifdef GENGMTRX_EXPORTS
-#define DLL_Entry __declspec(dllexport)
-#else
-#define DLL_Entry __declspec(dllimport)
-#endif
-#endif
-#endif
-
 
 /******************************************************************************
 *                        INCOMPLETE CLASS DECLARATIONS                        *
@@ -72,7 +60,7 @@ namespace tpcl
   *: Abstract: 
   *
   ******************************************************************************/
-  class DLL_Entry CPlane
+  class CPlane
   {
   public:
     float m_A, m_B, m_C, m_D;       ///< plane parameters
@@ -89,7 +77,8 @@ namespace tpcl
     CVec3 GetNormal() const                         { CVec3 v=GetOrtho(); tpcl::Normalize(v); return v; }
 
     /** convert plane to normal form (i.e. A,B,C are the normal vector) */
-    { 
+    void Normalize_m()
+    {
       CVec3* v = (CVec3*)&m_A;
       float l = 1.0f / Length(*v);
       *v *= l;
@@ -230,6 +219,4 @@ namespace tpcl
 
 } //namespace tpcl
 
-#undef DLL_Entry
 #endif
-

@@ -37,17 +37,6 @@
 *                                   IMPORTED                                  *
 ******************************************************************************/
 
-#define DLL_Entry 
-#ifndef _LIB 
-#ifndef _LIB_LINK
-#undef DLL_Entry 
-#ifdef GENGMTRX_EXPORTS
-#define DLL_Entry __declspec(dllexport)
-#else
-#define DLL_Entry __declspec(dllimport)
-#endif
-#endif
-#endif
 
 /******************************************************************************
 *                              EXPORTED CLASSES                               *
@@ -65,7 +54,7 @@ namespace tpcl
   * searches each cell in a radius.
   *
   ******************************************************************************/
-  class DLL_Entry CSpatialHash2D
+  class CSpatialHash2D
   {
   public:
     /******************************************************************************
@@ -135,11 +124,7 @@ namespace tpcl
 
 
 }// namespace __SPATIAL_HASH_H
-
+#endif
 /******************************************************************************
 *                            EXPORTED FUNCTIONS                               *
 ******************************************************************************/
-
-#undef DLL_Entry
-#endif
-

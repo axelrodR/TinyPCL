@@ -24,6 +24,8 @@
 *
 ******************************************************************************/
 #include "registration.h"
+#include "features.h"
+#include "SpatialHash.h"
 #include <vector>
 
 
@@ -74,6 +76,8 @@ namespace tpcl
     float m_voxelSize; //if >0, use voxel grid downsampling.
     CVec3 m_floodSource_xy; //x y coordinantes from which to start flood for ground segmentaion in ViewpointGridCreation.
     float m_heightMapRes; //resolution for height map used in ViewpointGridCreation.
+    float m_d_grid;  //grid resolution.
+    float m_d_sensor; //dist from ground for grid point.
     int m_lineWidth; // width of the polar depth map
     int m_numlines;  // height of the polar depth map 
     int m_searchRange; //range of grid locations to check. if not using GPS this needs to be set to inf.
@@ -104,7 +108,7 @@ namespace tpcl
     float** m_descriptorsDFT;       // descriptors DFT array (per orientation).
 
 
-                                    /** destructor */
+    /** destructor */
     CRegDictionaryE::CRegDictionaryE()
     {
       m_Orient = NULL;
@@ -141,79 +145,97 @@ namespace tpcl
 
 
     /** deletes previous dictionary and fills the dictionary with the grid - sets of location & rotation per entry.
-    * @param floodSource_xy   source for flood based ground segmentation.
-    * @param heightMapRes     Resolution of the height map.
+    * @param Xi_d_grid           Resolution of the grid.
+    * @param Xi_d_sensor         dist from ground for grid point.
+    * @param Xi_minNumNBRS       Min number of neighbors in global for a grid point.
     * @param Xi_pts           global point cloud */
-    void ViewpointGridCreation(CVec3 floodSource_xy, float heightMapRes, int Xi_numPts, const CVec3* Xi_pts)
+    void ViewpointGridCreation(float Xi_d_grid, float Xi_d_sensor, int Xi_numPts, const CVec3* Xi_pts)
     {
       DeleteDictionary();
-      float invRes = 1.0f / heightMapRes;
+      float invGridRes = 1.0f / Xi_d_grid;
 
-      //DO: find points only on ground, create grod from that.
-      float xMin = Xi_pts[0].x; float xMax = xMin;
-      float yMin = Xi_pts[0].y; float yMax = yMin;
-
-      for (int ptrIndex = 1; ptrIndex < Xi_numPts; ptrIndex++)
-      {
-        float x = Xi_pts[ptrIndex].x;
-        float y = Xi_pts[ptrIndex].y;
-        xMin = min(xMin, x);    yMin = min(yMin, y);
-        xMax = max(xMax, x);    yMax = max(yMax, y);
-      }
-
-      int N = int(ceil((xMax - xMin) * invRes)); //height map width.
-      int M = int(ceil((yMax - yMin) * invRes)); //height map height.
-      float* heightMap = new float[M*N];
-      for (int hIndex = 0; hIndex < M*N; hIndex++) //initialize height map with inf.
-        heightMap[hIndex] = FLT_MAX;
-
+      //hash global cloud:
+      CSpatialHash2D globalHashed;
       for (int ptrIndex = 0; ptrIndex < Xi_numPts; ptrIndex++)
       {
-        int x = int(floor((Xi_pts[ptrIndex].x - xMin) * invRes));
-        int y = int(floor((Xi_pts[ptrIndex].y - yMin) * invRes));
-        int index = y*N + x;
-        if (heightMap[index] == FLT_MAX)
-          heightMap[index] = Xi_pts[ptrIndex].z;
-        else if (Xi_pts[ptrIndex].z > heightMap[index])
-          heightMap[index] = Xi_pts[ptrIndex].z;
+        globalHashed.Add(Xi_pts[ptrIndex], NULL);
       }
 
+      //find grid's boundaries:
+      CVec3 bbox[2] = { Xi_pts[0] , Xi_pts[0] };
+      for (int i = 1; i < Xi_numPts; ++i)
+      {
+        bbox[0] = Min_ps(bbox[0], Xi_pts[i]);
+        bbox[1] = Max_ps(bbox[1], Xi_pts[i]);
+      }
 
-      //source in pixels.
-      int floodSourceX = int(ceil((floodSource_xy.x - xMin) * invRes));
-      int floodSourceY = int(ceil((floodSource_xy.y - yMin) * invRes));
-      //DO: flood for grid.
+      int GridWidth = int(ceil((bbox[1].x - bbox[0].x) * invGridRes));
+      int GridHeight = int(ceil((bbox[1].y - bbox[0].y) * invGridRes));
+      int totalGridPoint = GridHeight*GridWidth;
 
-      delete[] heightMap;
+      //create grid's locations (taking z value from the closest point):
+      CVec3* gridPositions = new CVec3[totalGridPoint];
+      for (int yGrid = 0; yGrid < GridHeight; yGrid++)
+      {
+        for (int xGrid = 0; xGrid < GridWidth; xGrid++)
+        {
+          CVec3 pos(bbox[0].x + xGrid*Xi_d_grid, bbox[0].y + yGrid*Xi_d_grid, 0);
+          CVec3 closest;
+          globalHashed.FindNearest(pos, &closest);
+          pos.z = closest.z;
+          gridPositions[yGrid*GridWidth + xGrid] = pos;
+        }
+      }
 
+      //find normals:
+      const float maxDistForPlane = 10;
+      CVec3* Normals = new CVec3[totalGridPoint];
+      //TODO:      Features::FillPointCloud();
+      Features::FindNormal(maxDistForPlane, globalHashed, totalGridPoint, gridPositions, Normals);
 
-      ////////
-      //CVec3 normal;
-      ////DO: calculate normal (pcnormals - in matlab). using parameter m_k_normalEstimation.
+      //set viewpoints height above ground (in the normal vector direction above the plane that was found):
+      for (int yGrid = 0; yGrid < GridHeight; yGrid++)
+      {
+        for (int xGrid = 0; xGrid < GridWidth; xGrid++)
+        {
+          int index = yGrid*GridWidth + xGrid;
+          gridPositions[index] = gridPositions[index] + (Xi_d_sensor * Normals[index]);
+        }
+      }
 
-      ////normal alignment
-      //for (int ptsIndex = 0; ptsIndex < Xi_numPts; ptsIndex++)
-      //{
-      //  CVec3 view2pts = Xi_pts[ptsIndex] - m_viewNormalFlip;
-      //  float dotProduct = D3DXVec3Dot(&view2pts, &normal);
-      //  if (dotProduct > 0)
-      //    normal = -normal;
-      //}
+      m_size = totalGridPoint;
+      m_Orient = new CMat4[totalGridPoint];
 
-      ////DO: find xyz: go to prid point position and take only points from global cloud that are IDX_minRange < at < IDX_maxRange.
-      ////DO: Translate to grid: for each xyz, xyz = xyz - xyzPoV.
-      //actually need to find whole rotation.
+      //creating final grid's transformation matrix:
+      for (int yGrid = 0; yGrid < GridHeight; yGrid++)
+      {
+        for (int xGrid = 0; xGrid < GridWidth; xGrid++)
+        {
+          //find refFrame matrix:
+          int index = yGrid*GridWidth + xGrid;
+          //zVec = Normals[index]
+          CVec3 xVec(1, 0, 0);
+          xVec = xVec - DotProd(xVec, Normals[index])*Normals[index];
+          Normalize(xVec);
+          CVec3 yVec = CrossProd(Normals[index], xVec);
+          Normalize(yVec);
 
-      ////////
+          //update transformation matrix:
+          float OrientVals[] = { xVec.x, yVec.x, Normals[index].x, 0.0f,
+            xVec.y, yVec.y, Normals[index].y, 0.0f,
+            xVec.z, yVec.z, Normals[index].z, 0.0f,
+            gridPositions[index].x, gridPositions[index].y, gridPositions[index].z, 1.0f };
+          m_Orient[index] = CMat4(&OrientVals[0]);
+        }
+      }
 
+      //release memory:
+      delete[] gridPositions;
+      delete[] Normals;
 
-
-      //DO:
-      //m_size = number of points we got in grid.
+      //create vectors for the descriptors:
       m_descriptors = new float*[m_size];
       m_descriptorsDFT = new float*[m_size];
-      m_Orient = new CMat4[m_size];
-      //put all positions and rotations in m_Orient.
 
     }
 
@@ -286,8 +308,9 @@ namespace tpcl
       {
         CMat4 orients = m_Orient[gridIndex];
 
+        //DO: find xyz: go to prid point position and take only points from global cloud that are IDX_minRange < at < IDX_maxRange.
         //DO: transform points around position so z axis is as normal and origin (0,0,0) be at position (point-position).
-        //  from Xi_pts to ptsTransformed.
+        //  transformation from Xi_pts to ptsTransformed.
 
         //create descriptor - range image, FFT
         delete[] m_descriptors[gridIndex];
@@ -495,15 +518,15 @@ namespace tpcl
   {
     m_opts = new CRegOptions;
     CRegOptions* optsP = (CRegOptions*)m_opts;
-    optsP->m_k_normalEstimation = 0; //the number of points used for local plane fitting.
-                                     //    optsP->m_viewNormalFlip       = ; //normal vectors direction flipped towards the viewpoint viewNormalFlip.
-    optsP->m_voxelSize = 0; //if >0, use voxel grid downsampling.
-                            //    optsP->m_floodSource_xy       = ; //x y coordinantes from which to start flood for ground segmentaion in ViewpointGridCreation.
-    optsP->m_heightMapRes = 0; //resolution for height map used in ViewpointGridCreation.
-    optsP->m_lineWidth = 0; // width of the polar depth map
-    optsP->m_numlines = 0; // height of the polar depth map 
-    optsP->m_searchRange = 0; //range of grid locations to check. if not using GPS this needs to be set to inf.
-    optsP->m_medFiltSize = 0; //deniseing median filter size.
+    optsP->m_k_normalEstimation   = 0; //the number of points used for local plane fitting.
+//    optsP->m_viewNormalFlip       = ; //normal vectors direction flipped towards the viewpoint viewNormalFlip.
+    optsP->m_voxelSize            = 0; //if >0, use voxel grid downsampling.
+//    optsP->m_floodSource_xy       = ; //x y coordinantes from which to start flood for ground segmentaion in ViewpointGridCreation.
+    optsP->m_heightMapRes         = 0; //resolution for height map used in ViewpointGridCreation.
+    optsP->m_lineWidth            = 0; // width of the polar depth map
+    optsP->m_numlines             = 0; // height of the polar depth map 
+    optsP->m_searchRange          = 0; //range of grid locations to check. if not using GPS this needs to be set to inf.
+    optsP->m_medFiltSize          = 0; //deniseing median filter size.
     optsP->m_distFromMedianThresh = 0; //max distance between point and median filter's result.
 
     m_dictionary = new CRegDictionaryE;
@@ -551,9 +574,9 @@ namespace tpcl
 
 
     //create grid's position and orientation: 
-    dictionaryP->ViewpointGridCreation(optsP->m_floodSource_xy, optsP->m_heightMapRes, Xi_numPts, Xi_pts); //TODO: complete function ViewpointGridCreation.
+    dictionaryP->ViewpointGridCreation(optsP->m_d_grid, optsP->m_d_sensor, Xi_numPts, Xi_pts);
 
-                                                                                                           //fill the dictionary entries with their descriptors:
+    //fill the dictionary entries with their descriptors:
     dictionaryP->DescriptorsCreation(Xi_numPts, Xi_pts, optsP->m_lineWidth, optsP->m_numlines);
   }
 
@@ -602,7 +625,7 @@ namespace tpcl
   *: Method name: GetLocalRegistration
   *
   ******************************************************************************/
-  void CCoarseRegister::GetLocalRegistration(D3DXMATRIX& Xo_best)
+  void CCoarseRegister::GetLocalRegistration(CMat4& Xo_best)
   {
 
   }

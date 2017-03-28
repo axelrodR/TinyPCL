@@ -46,18 +46,6 @@
 *                                   IMPORTED                                  *
 ******************************************************************************/
 
-#define DLL_Entry 
-#ifndef _LIB 
-#ifndef _LIB_LINK
-#undef DLL_Entry 
-#ifdef TPCL_EXPORTS
-#define DLL_Entry __declspec(dllexport)
-#else
-#define DLL_Entry __declspec(dllimport)
-#endif
-#endif
-#endif
-
 namespace tpcl
 {
   /******************************************************************************
@@ -81,7 +69,7 @@ namespace tpcl
   /// 
   /// Single (top) surface, 2B per cell
   ///////////////////////////////////////////////////////////////////////////////
-  class DLL_Entry CSimpleHgtMap : public CGrid2D<unsigned short>, public tpcl::IRasterizable
+  class CSimpleHgtMap : public CGrid2D<unsigned short>, public tpcl::IRasterizable
   {
   public:
     // height resolution
@@ -132,7 +120,7 @@ namespace tpcl
   /// a variation of Recast/Detour's rcHeightfield.
   /// see: https://github.com/recastnavigation/recastnavigation
   ///////////////////////////////////////////////////////////////////////////////
-  class DLL_Entry CDynamicHeightMap : public CGrid2dBase
+  class CDynamicHeightMap : public CGrid2dBase
   {
   public:
     static const int SPAN_HEIGHT_BITS = 16; // number of bits used for height
@@ -221,7 +209,7 @@ namespace tpcl
   /// All spans are stored in one array (the cell uses an index)  
   /// see: https://github.com/recastnavigation/recastnavigation
   ///////////////////////////////////////////////////////////////////////////////
-  class DLL_Entry CCompactHeightMap : public CGrid2D<CCompactCell>
+  class CCompactHeightMap : public CGrid2D<CCompactCell>
   {
   public:
 
@@ -329,15 +317,4 @@ namespace tpcl
 
 } // namespace tpcl
 
-
-#undef DLL_Entry
 #endif
-
-
-/******************************************************************************
-*                    OLD STYLE TYPEDEFS                                       *
-******************************************************************************/
-
-typedef tpcl::CSimpleHgtMap TPCL_HMAP_CSimpleHgtMap;
-typedef tpcl::CDynamicHeightMap TPCL_HMAP_CDynamicHeightMap;
-typedef tpcl::CCompactHeightMap TPCL_HMAP_CCompactHeightMap;

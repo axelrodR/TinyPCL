@@ -144,7 +144,7 @@ namespace tpcl
    }
 
 
-  template<class T> T MinT(const T& a, const T& b, const T& c) { return __min(a,__min(b,c)); }
+  template<class T> T MinT(const T& a, const T& b, const T& c) { return MinT(a, MinT(b,c)); }
 
 
   /******************************************************************************
