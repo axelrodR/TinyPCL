@@ -142,6 +142,8 @@ namespace tpcl
  
   // multiplication in place
   template <typename T> inline void Multiply(const TMat4<T>& lhs, const TVec3<T>& rhs, TMat4<T>& res);
+  template <typename T> inline void TransposeLeftMultiply(const TMat4<T>& lhs, const TVec3<T>& rhs, TMat4<T>& res);
+  //void TransposeLeftMultiply(const TMat4& lhs, const TMat4& rhs, TMat4& res);
 
   typedef TVec3<float> CVec3;
   typedef TMat4<float> CMat4;
@@ -254,10 +256,6 @@ namespace tpcl
   template <typename T>
   inline bool TVec3<T>::operator!=(const TVec3<T>& rhs) const
     { return (x==rhs.x && y==rhs.y && z==rhs.z); }
-
-  template <typename T>
-  inline TVec3<T> operator*(T lhs, const TVec3<T>& rhs)
-    { return TVec3<T>(lhs*rhs.x, lhs*rhs.y, lhs*rhs.z); }
 
 
   template <typename T>
@@ -493,16 +491,45 @@ namespace tpcl
   
   // matrix multiplication
   template <typename T>
-  inline void Multiply(const TMat4<T>& lhs, const TVec3<T>& rhs, TMat4<T>& res)
+  inline void Multiply(const TMat4<T>& lhs, const TMat4<T>& rhs, TMat4<T>& res)
   {
     TMat4<T> tmp;
     for (int r=0; r<4; ++r)
     {
       for (int c=0; c<4; ++c)
-        tmp[r][c] = m[r][0]*rhs.m[0][c] + m[r][1]*rhs.m[1][c] + m[r][2]*rhs.m[2][c] + m[r][3]*rhs.m[3][c];
+        tmp.m[r][c] = lhs.m[r][0]*rhs.m[0][c] + lhs.m[r][1]*rhs.m[1][c] + lhs.m[r][2]*rhs.m[2][c] + lhs.m[r][3]*rhs.m[3][c];
     }
     res = tmp;
   }
+
+  template <typename T>
+  inline void TransposeLeftMultiply(const TMat4<T>& lhs, const TMat4<T>& rhs, TMat4<T>& res)
+  {
+    TMat4<T> tmp;
+    for (int r = 0; r<3; ++r)
+    {
+      for (int c = 0; c<4; ++c)
+        tmp.m[r][c] = lhs.m[0][r] * rhs.m[0][c] + lhs.m[1][r] * rhs.m[1][c] + lhs.m[2][r] * rhs.m[2][c];
+    }
+    int r = 3;
+    for (int c = 0; c<4; ++c)
+      tmp.m[r][c] = lhs.m[r][0] * rhs.m[0][c] + lhs.m[r][1] * rhs.m[1][c] + lhs.m[r][2] * rhs.m[2][c] + lhs.m[r][3] * rhs.m[3][c];
+    res = tmp;
+  }
+
+ /* inline void TransposeLeftMultiply(const TMat4& lhs, const TMat4& rhs, TMat4& res)
+  {
+    TMat4 tmp;
+    for (int r = 0; r<3; ++r)
+    {
+      for (int c = 0; c<4; ++c)
+        tmp.m[r][c] = lhs.m[0][r] * rhs.m[0][c] + lhs.m[1][r] * rhs.m[1][c] + lhs.m[2][r] * rhs.m[2][c];
+    }
+    int r = 3;
+    for (int c = 0; c<4; ++c)
+      tmp.m[r][c] = lhs.m[r][0] * rhs.m[0][c] + lhs.m[r][1] * rhs.m[1][c] + lhs.m[r][2] * rhs.m[2][c] + lhs.m[r][3] * rhs.m[3][c];
+    res = tmp;
+  }*/
 
   // specialization for floats using SIMD
   template<> inline void Multiply(const TMat4<float>& lhs, const TVec3<float>& rhs, TMat4<float>& res);
@@ -546,7 +573,7 @@ namespace tpcl
   }
 
   template <typename T>
-  inline TMat4<T> operator*(float lhs, const TMat4<T>& rhs)
+  inline TMat4<T> operator*(T lhs, const TMat4<T>& rhs)
   {
     TMat4<T> res = rhs;
     res *= lhs;

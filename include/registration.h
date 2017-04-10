@@ -81,16 +81,25 @@ namespace tpcl
 
     /** Create and get list of registration matches for a local point cloud
     * @param Xi_maxCandidates     maximum number of matches to return.
-    * @param Xi_pts               local point cloud.
+    * @param Xi_pts               local point cloud - arranged by azimuth and latitude. i.e. row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
     * @param Xi_originApprox      measured/approximate origin.
-    * @param Xo_candidates        indices of the candidates in the dictionary.
+    * @param Xo_candidates        list of the candidates (indices of the candidates in the dictionary).
+    * @param Xo_grades            list of the candidates grades.
+    * @param Xo_rotations         list of the candidates rotation.
+    * @param Xi_numPts            total points in the point cloud.
+    * @param Xi_numlines          if it's an order point cloud then this is the height of the local point cloud.    
+    * @param Xi_GPS               GPS estimation of registration location, if NULL then no estimation.
     * @return                     number of candidates.*/
-    int GetLocalRegistrationCandidates(int Xi_maxCandidates, int Xi_numPts, const CVec3* Xi_pts, CVec3 Xi_originApprox, int* Xo_candidates);
+    int GetLocalRegistrationCandidates(int Xi_maxCandidates, CVec3* Xi_pts, CVec3 Xi_originApprox, int* Xo_candidates, float* Xo_grades, CMat4* Xo_rotations, int Xi_numPts, int Xi_numlines = -1, CVec3* Xi_GPS = NULL);
 
 
     /** Get best registration match from created candidates list.
-    * @return grade of best match  */
-    float GetLocalRegistration(CMat4& Xo_best);
+    * @param Xi_NumOfCandidates   number of candidates.
+    * @param Xi_candidates        list of the candidates (indices of the candidates in the dictionary).
+    * @param Xi_grades            list of the candidates grades.
+    * @param Xi_rotations         list of the candidates rotation.
+    * @param Xo_best              best registration from candidates */
+    void GetLocalRegistration(int Xi_NumOfCandidates, int* Xi_candidates, float* Xi_grades, CMat4* Xi_rotations, CMat4& Xo_best);
 
 
 
@@ -108,21 +117,8 @@ namespace tpcl
     *                             Protected methods                               *
     ******************************************************************************/
 
-    /** Create a descriptor from (laser) polar depth map
-     * @param Xi_polarDistMap     polar distance map from which the descriptor is built
-     * @param Xo_descriptor       Output descriptor */
-    virtual void U_CreateDescriptor(float* Xi_polarDistMap, int* Xo_descriptor);
   };
 
-
-
-  ///** another class with the 2nd algorithm proposed by David Avidar */
-  //class DLL_Entry CCoarseRegister2 : public CCoarseRegister
-  //{
-  //public:
-  //  CCoarseRegister2();
-  //  virtual void U_CreateDescriptor(float* Xi_polarDistMap, int* Xo_descriptor);
-  //};
 
 
 

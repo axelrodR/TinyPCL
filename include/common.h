@@ -36,6 +36,8 @@
 
 namespace tpcl
 {
+  const double M_PI = 3.14159265358979323846264338327950288;
+
   template<class T> T MinT(T a, T b) { return ((a) < (b)) ? (a) : (b); }
   template<class T> T MaxT(T a, T b) { return ((a) > (b)) ? (a) : (b); }
   template<class T> void SwapT(T &a, T &b) { T c = a; a = b; b = c; }

@@ -26,20 +26,16 @@
 #include "registration.h"
 #include "features.h"
 #include "SpatialHash.h"
+#include "common.h"
 #include <vector>
+#include <complex>
+#include <algorithm>
 
 
 //#ifdef _DEBUG
 //#define new_file DEBUG_NEW
 //#endif
 
-#ifndef max
-#define max(a,b)            (((a) > (b)) ? (a) : (b))
-#endif
-
-#ifndef min
-#define min(a,b)            (((a) < (b)) ? (a) : (b))
-#endif
 
 namespace tpcl
 {
@@ -71,18 +67,21 @@ namespace tpcl
   struct CRegOptions
   {
     //parameters:
-    int m_k_normalEstimation; //the number of points used for local plane fitting.
-    CVec3 m_viewNormalFlip; //normal vectors direction flipped towards the viewpoint viewNormalFlip.
-    float m_voxelSize; //if >0, use voxel grid downsampling.
-    CVec3 m_floodSource_xy; //x y coordinantes from which to start flood for ground segmentaion in ViewpointGridCreation.
-    float m_heightMapRes; //resolution for height map used in ViewpointGridCreation.
-    float m_d_grid;  //grid resolution.
-    float m_d_sensor; //dist from ground for grid point.
-    int m_lineWidth; // width of the polar depth map
-    int m_numlines;  // height of the polar depth map 
-    int m_searchRange; //range of grid locations to check. if not using GPS this needs to be set to inf.
-    int m_medFiltSize; //deniseing median filter size.
-    float m_distFromMedianThresh; //max distance between point and median filter's result.
+    float m_voxelSizeGlobal;      // if >0, use voxel grid downsampling.
+    float m_voxelSizeLocal;       // if >0, use voxel grid downsampling.
+    float m_d_grid;               // grid resolution.
+    float m_d_sensor;             // dist from ground for grid point.
+    int m_lineWidth;              // width of the polar depth map
+    int m_numlines;               // height of the polar depth map 
+    float m_searchRange;          // range of grid locations to check. if not using GPS this needs to be set to inf.
+    int m_medFiltSize0;           // deniseing median filter size for the range imgae.
+    int m_medFiltSize1;           // deniseing median filter size for the thresh image.
+    float m_distFromMedianThresh; // max distance between point and median filter's result.
+    float m_r_max;                // maximum distance from grid point for descriptor creation.
+    float m_r_min;                // minimum distance from grid point for descriptor creation.
+
+    void SetDefaults();
+    CRegOptions() { SetDefaults(); }
   };
 
 
@@ -105,8 +104,9 @@ namespace tpcl
   {
   public:
     float** m_descriptors;          // descriptors array     (per orientation).
-    float** m_descriptorsDFT;       // descriptors DFT array (per orientation).
+    std::complex<float>** m_descriptorsDFT;       // descriptors DFT array (per orientation).
 
+    CSpatialHash2D m_globalHashed;  //hashed global point cloud.
 
     /** destructor */
     CRegDictionaryE::CRegDictionaryE()
@@ -141,8 +141,20 @@ namespace tpcl
       m_Orient = NULL;
 
       m_size = -1;
+
+      m_globalHashed.Clear();
     }
 
+
+    /** builds the hashed point cloud of the input point cloud, in the member m_globalHashed.
+    * @param Xi_pts           global point cloud */
+    void HashPointCloud(int Xi_numPts, const CVec3* Xi_pts)
+    {
+      for (int ptrIndex = 0; ptrIndex < Xi_numPts; ptrIndex++)
+      {
+        m_globalHashed.Add(Xi_pts[ptrIndex], NULL);
+      }
+    }
 
     /** deletes previous dictionary and fills the dictionary with the grid - sets of location & rotation per entry.
     * @param Xi_d_grid           Resolution of the grid.
@@ -155,11 +167,7 @@ namespace tpcl
       float invGridRes = 1.0f / Xi_d_grid;
 
       //hash global cloud:
-      CSpatialHash2D globalHashed;
-      for (int ptrIndex = 0; ptrIndex < Xi_numPts; ptrIndex++)
-      {
-        globalHashed.Add(Xi_pts[ptrIndex], NULL);
-      }
+      HashPointCloud(Xi_numPts, Xi_pts);
 
       //find grid's boundaries:
       CVec3 bbox[2] = { Xi_pts[0] , Xi_pts[0] };
@@ -181,7 +189,7 @@ namespace tpcl
         {
           CVec3 pos(bbox[0].x + xGrid*Xi_d_grid, bbox[0].y + yGrid*Xi_d_grid, 0);
           CVec3 closest;
-          globalHashed.FindNearest(pos, &closest);
+          m_globalHashed.FindNearest(pos, &closest);
           pos.z = closest.z;
           gridPositions[yGrid*GridWidth + xGrid] = pos;
         }
@@ -191,7 +199,7 @@ namespace tpcl
       const float maxDistForPlane = 10;
       CVec3* Normals = new CVec3[totalGridPoint];
       //TODO:      Features::FillPointCloud();
-      Features::FindNormal(maxDistForPlane, globalHashed, totalGridPoint, gridPositions, Normals);
+      Features::FindNormal(maxDistForPlane, m_globalHashed, totalGridPoint, gridPositions, Normals);
 
       //set viewpoints height above ground (in the normal vector direction above the plane that was found):
       for (int yGrid = 0; yGrid < GridHeight; yGrid++)
@@ -222,10 +230,10 @@ namespace tpcl
 
           //update transformation matrix:
           float OrientVals[] = { xVec.x, yVec.x, Normals[index].x, 0.0f,
-            xVec.y, yVec.y, Normals[index].y, 0.0f,
-            xVec.z, yVec.z, Normals[index].z, 0.0f,
-            gridPositions[index].x, gridPositions[index].y, gridPositions[index].z, 1.0f };
-          m_Orient[index] = CMat4(&OrientVals[0]);
+                                 xVec.y, yVec.y, Normals[index].y, 0.0f,
+                                 xVec.z, yVec.z, Normals[index].z, 0.0f,
+                                 gridPositions[index].x, gridPositions[index].y, gridPositions[index].z, 1.0f };
+          m_Orient[index] = CMat4(OrientVals);
         }
       }
 
@@ -234,8 +242,8 @@ namespace tpcl
       delete[] Normals;
 
       //create vectors for the descriptors:
-      m_descriptors = new float*[m_size];
-      m_descriptorsDFT = new float*[m_size];
+      m_descriptors    = new float*[m_size];
+      m_descriptorsDFT = new std::complex<float>*[m_size];
 
     }
 
@@ -249,8 +257,6 @@ namespace tpcl
     * @param Xo_RangeImage   polar depth map.  */
     void ConvertPCL2descriptor(int Xi_lineWidth, int Xi_numlines, int Xi_numPts, const CVec3* Xi_pts, float* Xo_RangeImage)
     {
-      const double M_PI = 3.14159265358979323846264338327950288;
-
       float azimuthRes = 2 * float(M_PI) / Xi_lineWidth;
       float elevationRes = float(M_PI) / Xi_numlines;
       //fill range image with default value - 0.
@@ -287,141 +293,415 @@ namespace tpcl
     /** find FFT of a 2D descriptor.
     * @param Xi_desc1Dsize      size of the descriptor's first dimension (width of the range image - lineWidth)
     * @param Xi_desc2Dsize      size of the descriptor's second dimension (height of the range image - numlines).
-    * @param Xi_Descriptor      2D descriptor - range image.
+    * @param Xi_Descriptor      2D descriptor - range image. 
     * @param Xo_DescriptorFFT   descriptor's 2D FFT.  */
-    void ConvertDescriptor2FFT(int Xi_desc1Dsize, int Xi_desc2Dsize, float* Xi_Descriptor, float* Xo_DescriptorFFT)
+    void ConvertDescriptor2FFT(int Xi_desc1Dsize, int Xi_desc2Dsize, float* Xi_Descriptor, std::complex<float>* Xo_DescriptorFFT)
     {
-      //DO:
+      for (int index2 = 0; index2 < Xi_desc2Dsize; index2++)
+      {
+        for (int index1 = 0; index1 < Xi_desc1Dsize; index1++)
+        {
+          int index = (index2 * Xi_desc1Dsize) + index1;
+          Xo_DescriptorFFT[index] = Xi_Descriptor[index];
+        }
+      }
+
+      //TODO: resolve link problem:
+      //IfrMath::DFT2D(unsigned int(Xi_desc1Dsize), unsigned int(Xi_desc2Dsize), Xo_DescriptorFFT);
     }
 
 
     /** fills the dictionary entries with their descriptors.
-    * @param Xi_pts           global point cloud
+    * @param Xi_r_max        maximum distance from grid point for descriptor creation.
+    * @param Xi_r_min        minimum distance from grid point for descriptor creation.
+    * @param Xi_pts          global point cloud
     * @param Xi_desc1Dsize   size of the descriptor's first dimension (width of the range image - lineWidth)
     * @param Xi_desc2Dsize   size of the descriptor's second dimension (height of the range image - numlines).  */
-    void DescriptorsCreation(int Xi_numPts, const CVec3* Xi_pts, int Xi_desc1Dsize, int Xi_desc2Dsize = 0)
+    void DescriptorsCreation(float Xi_r_max, float Xi_r_min, int Xi_numPts, const CVec3* Xi_pts, int Xi_desc1Dsize, int Xi_desc2Dsize = 0)
     {
-      CVec3* ptsTransformed = new CVec3[Xi_numPts];
+      const int maxInRangePoints = 256;
+      int nearGotten = 0;
+      CVec3 ptsInRange[maxInRangePoints];
+      CVec3 ptsTransformed[maxInRangePoints];
+      void* UnusedBuffer[maxInRangePoints];
 
+      
       //go over grid points and create descriptors for each point:
       for (int gridIndex = 0; gridIndex < m_size; gridIndex++)
       {
         CMat4 orients = m_Orient[gridIndex];
 
-        //DO: find xyz: go to prid point position and take only points from global cloud that are IDX_minRange < at < IDX_maxRange.
-        //DO: transform points around position so z axis is as normal and origin (0,0,0) be at position (point-position).
-        //  transformation from Xi_pts to ptsTransformed.
+        CVec3 Pos = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
+        nearGotten = m_globalHashed.GetNear(Pos, maxInRangePoints, UnusedBuffer, ptsInRange, Xi_r_max);
 
+        int TransformedSize = 0;
+
+        for (int nearIndex = 0; nearIndex < nearGotten; nearIndex++)
+        {
+          //check if point too close:
+          float dist = Dist(Pos, ptsInRange[nearIndex]);
+          if (dist < Xi_r_min)
+            continue;
+
+          //transform point:
+          CVec3 PosShifted = ptsInRange[nearIndex] - Pos;
+          //DO: make sure this is the mult he meant.
+          CVec3 MatRow0 = CVec3(orients.m[0][0], orients.m[0][1], orients.m[0][2]);
+          CVec3 MatRow1 = CVec3(orients.m[1][0], orients.m[1][1], orients.m[1][2]);
+          CVec3 MatRow2 = CVec3(orients.m[2][0], orients.m[2][1], orients.m[2][2]);
+          ptsTransformed[TransformedSize].x = DotProd(PosShifted, MatRow0);
+          ptsTransformed[TransformedSize].y = DotProd(PosShifted, MatRow1);
+          ptsTransformed[TransformedSize].z = DotProd(PosShifted, MatRow2);
+
+          TransformedSize++;
+        }
+        
         //create descriptor - range image, FFT
         delete[] m_descriptors[gridIndex];
         m_descriptors[gridIndex] = new float[Xi_desc1Dsize*Xi_desc2Dsize];
-        ConvertPCL2descriptor(Xi_desc1Dsize, Xi_desc2Dsize, Xi_numPts, ptsTransformed, m_descriptors[gridIndex]);
+        ConvertPCL2descriptor(Xi_desc1Dsize, Xi_desc2Dsize, TransformedSize, ptsTransformed, m_descriptors[gridIndex]);
 
         delete[] m_descriptorsDFT[gridIndex];
-        m_descriptorsDFT[gridIndex] = new float[Xi_desc1Dsize*Xi_desc2Dsize];
+        m_descriptorsDFT[gridIndex] = new std::complex<float>[Xi_desc1Dsize*Xi_desc2Dsize];
         ConvertDescriptor2FFT(Xi_desc1Dsize, Xi_desc2Dsize, m_descriptors[gridIndex], m_descriptorsDFT[gridIndex]);
       }
 
-      delete[] ptsTransformed;
     }
+
+    /** calculate best phase correlation.
+    * @param Xi_descriptorFFT0             input fisrt descriptor.
+    * @param Xi_descriptorFFT1             input second descriptor.
+    * @param Xo_bestRow                    row of best score.
+    * @param Xo_bestCol                    column of best score.
+    * @param Xo_bestScore                  list of the candidates grades.
+    * @param Xi_desc1Dsize                 size of the descriptor's first dimension (width of the range image - lineWidth).
+    * @param Xi_desc2Dsize                 size of the descriptor's second dimension (height of the range image - numlines). */
+    void BestPhaseCorr(std::complex<float>* Xi_descriptorFFT0, std::complex<float>* Xi_descriptorFFT1, int& Xo_bestRow, int& Xo_bestCol, float& Xo_bestScore, int Xi_desc1Dsize, int Xi_desc2Dsize = 0)
+    {
+      Xo_bestScore = FLT_MIN;
+      Xo_bestRow = 0;
+      Xo_bestCol = 0;
+
+      std::complex<float>* PhCor = new std::complex<float>[Xi_desc1Dsize * Xi_desc2Dsize];
+      float lengthSum = 0;
+      for (int index2 = 0; index2 < Xi_desc2Dsize; index2++)
+      {
+        for (int index1 = 0; index1 < Xi_desc1Dsize; index1++)
+        {
+          int index = (index2 * Xi_desc1Dsize) + index1;
+
+          PhCor[index] = Xi_descriptorFFT0[index] * conj(Xi_descriptorFFT1[index]);
+          lengthSum += std::abs(PhCor[index]);
+        }
+      }
+
+      if (lengthSum == 0)
+        return;
+
+      //normalize:
+      for (int index = 0; index < Xi_desc1Dsize*Xi_desc2Dsize; index++)
+      {
+        PhCor[index] /= lengthSum;
+      }
+
+      //TODO: resolve link problem:
+      //IfrMath::DFT2D(Xi_desc1Dsize, Xi_desc2Dsize, PhCor, false);
+
+      //TODO: check if shift is needed. sent same image twice and see if in the result the delta is in the center or not.
+
+      //find max:
+      for (int index2 = 0; index2 < Xi_desc2Dsize; index2++)
+      {
+        for (int index1 = 0; index1 < Xi_desc1Dsize; index1++)
+        {
+          int index = (index2 * Xi_desc1Dsize) + index1;
+
+          if (PhCor[index].real() > Xo_bestScore)
+          {
+            Xo_bestScore = PhCor[index].real();
+            Xo_bestRow = index2;
+            Xo_bestCol = index1;
+          }
+        }
+      }
+    }
+
+
 
 
     /** return candidates suitable for the input descriptor.
-    * @param Xi_descriptor                 input local descriptor.
-    * @param Xo_Candidates                 list of the candidates.
-    * @param Xo_Candidates                 list of the candidates grades. */
-    void SearchDictionary(const int* Xi_descriptor, int* Xo_candidates, float* Xo_grades)
+    * @param Xi_maxCandidates     maximum number of matches to return.
+    * @param Xi_descriptor        input local descriptor.
+    * @param Xo_candidates        list of the candidates.
+    * @param Xo_grades            list of the candidates grades. 
+    * @param Xo_rotations         list of the candidates rotation.
+    * @param Xi_desc1Dsize        size of the descriptor's first dimension (width of the range image - lineWidth)
+    * @param Xi_desc2Dsize        size of the descriptor's second dimension (height of the range image - numlines).  
+    * @return                     number of candidates.*/
+    int SearchDictionary(int Xi_maxCandidates, float Xi_searchRadius, std::complex<float>* Xi_descriptorFFT, int* Xo_candidates, float* Xo_grades, CMat4* Xo_rotations, int Xi_desc1Dsize, int Xi_desc2Dsize = 0, CVec3* Xi_estimatePos = NULL)
     {
+      float finalMax = FLT_MIN;
+      int finalIndex = -1;
+      int finalrow = -1;
+      int finalcol = -1;
 
+
+      int NumOfCandidates = 0;
+      int minIndex = 0;
+      Xo_grades[minIndex] = FLT_MAX;
+
+      int* bestCols = new int[Xi_maxCandidates];
+
+      int gridIndex = 0;
+      //take first Xi_maxCandidates entries from dictionary which are closer than Xi_searchRadius from GPS estimation:
+      for (gridIndex; gridIndex < m_size; gridIndex++)
+      {
+        CMat4 orients = m_Orient[gridIndex];
+        CVec3 Pos = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
+
+        //ignore entries which are too far from the GPS guess:
+        if (Xi_estimatePos)
+        {
+          if (Dist(*Xi_estimatePos, Pos) > Xi_searchRadius)
+            continue;
+        }
+
+        std::complex<float>* gridDescDFT = m_descriptorsDFT[gridIndex];
+        float bestMax = FLT_MIN;
+        int bestRow = -1;
+        int bestCol = -1;
+        BestPhaseCorr(gridDescDFT, Xi_descriptorFFT, bestRow, bestCol, bestMax, Xi_desc1Dsize, Xi_desc2Dsize);
+
+        Xo_candidates[NumOfCandidates] = gridIndex;
+        Xo_grades[NumOfCandidates] = bestMax;
+        bestCols[NumOfCandidates] = bestCol;
+
+        if (bestMax < Xo_grades[minIndex])
+        {
+          minIndex = NumOfCandidates;
+        }
+
+        NumOfCandidates++;
+
+        if (NumOfCandidates == Xi_maxCandidates)
+          break;
+      }
+
+
+      //continue combing dictionary (remaining with best Xi_maxCandidates Candidates:
+      for (gridIndex; gridIndex < m_size; gridIndex++)
+      {
+        CMat4 orients = m_Orient[gridIndex];
+        CVec3 Pos = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
+        //ignore entries which are too far from the GPS guess:
+        if (Xi_estimatePos)
+        {
+          if (Dist(*Xi_estimatePos, Pos) > Xi_searchRadius)
+            continue;
+        }
+
+        std::complex<float>* gridDescDFT = m_descriptorsDFT[gridIndex];
+        float bestMax = FLT_MIN;
+        int bestRow = -1;
+        int bestCol = -1;
+        BestPhaseCorr(gridDescDFT, Xi_descriptorFFT, bestRow, bestCol, bestMax, Xi_desc1Dsize, Xi_desc2Dsize);
+        if (bestMax > Xo_grades[minIndex])
+        {
+          Xo_grades[minIndex] = bestMax;
+          Xo_candidates[minIndex] = gridIndex;
+          bestCols[minIndex] = bestCol;
+
+
+          for (int candIndex = 0; candIndex < NumOfCandidates; candIndex++)
+          {
+            if (Xo_grades[candIndex] < Xo_grades[minIndex])
+              minIndex = candIndex;
+          }
+        }
+      }
+
+
+      //compute rotation matrix for candidates:
+      float azimuthRes = 2 * float(M_PI) / Xi_desc1Dsize;
+
+      for (int candIndex = 0; candIndex < NumOfCandidates; candIndex++)
+      {
+        CMat4 orients = m_Orient[Xo_candidates[candIndex]];
+        CVec3 Pos = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
+        
+        //calc beast azimuth in radians.
+        float centerShift = ((Xi_desc1Dsize & 1) == 0) ? 0.5f : 0.0f;
+        float peak_azimuth = float(bestCols[candIndex] + centerShift) * azimuthRes - float(M_PI);
+        
+        float OrientVals[] = { cos(peak_azimuth), -sin(peak_azimuth), 0.0f, 0.0f,
+                               sin(peak_azimuth),  cos(peak_azimuth), 0.0f, 0.0f,
+                               0.0f             ,  0.0f             , 1.0f, 0.0f,
+                               0.0f             ,  0.0f             , 0.0f, 1.0f };
+
+
+        TransposeLeftMultiply(orients, CMat4(OrientVals), Xo_rotations[candIndex]); //TODO: confirm.
+
+        Xo_rotations[candIndex].m[3][0] = Pos.x;
+        Xo_rotations[candIndex].m[3][1] = Pos.y;
+        Xo_rotations[candIndex].m[3][2] = Pos.z;
+        Xo_rotations[candIndex].m[0][3] = 0;
+        Xo_rotations[candIndex].m[1][3] = 0;
+        Xo_rotations[candIndex].m[2][3] = 0;
+        Xo_rotations[candIndex].m[3][3] = 1;
+
+      }
+
+      delete[] bestCols;
+      return NumOfCandidates;
     }
-
-    /** Create a descriptor from (laser) polar depth map
-    * @param Xi_descriptor0     polar distance map from which the descriptor is built
-    * @param Xi_descriptor1       Output descriptor */
-    virtual float U_MatchDescriptor(int* Xi_descriptor0, int* Xi_descriptor1)
-    {
-      float tempForRunning = 0;
-      return tempForRunning;
-    }
-
   };
 
 
 
 
 
+  /** 2D median filter.
+  * @param Xi_lineWidth                image width.
+  * @param Xi_numlines                 image height.
+  * @param Xi_medFiltSize              median filter size.
+  * @param Xi_pts                      input image.
+  * @param Xo_ptsFiltered              2D median filtered image. assumes  Xo_ptsFiltered != Xi_pts*/
+  void Median2DPowOf2(int Xi_lineWidth, int Xi_numlines, int Xi_medFiltSize, float* Xi_pts, float* Xo_ptsFiltered)
+  {
+    int windowSize = Xi_medFiltSize*Xi_medFiltSize;
+    int half1DWindow = Xi_medFiltSize >> 1;
+    float* window = new float[windowSize];
+
+
+    for (int row = 0; row < Xi_numlines; row++)
+    {
+      for (int col = 0; col < Xi_lineWidth; col++)
+      {
+        for (int winRow = -half1DWindow; winRow <= half1DWindow; winRow++)
+        {
+          for (int winCol = -half1DWindow; winCol <= half1DWindow; winCol++)
+          {
+            int cyclicRow = ((unsigned int)(row + winRow)) & (Xi_numlines - 1);
+            int cyclicCol = ((unsigned int)(col + winCol)) & (Xi_lineWidth - 1);
+            int index = (cyclicRow * Xi_lineWidth) + cyclicCol;
+            int winIndex = ((winRow + half1DWindow) * Xi_medFiltSize) + (winCol + half1DWindow);
+            window[winIndex] = Xi_pts[index];
+          }
+        }
+        std::nth_element(window, window + (windowSize >> 1), window + windowSize);
+        Xo_ptsFiltered[row*Xi_lineWidth + col] = window[windowSize >> 1];
+      }
+    }
+
+
+    delete[] window;
+  }
+
+
+  /** denose a xyz image and return a denoised point cloud.
+  * @param Xi_lineWidth                width of the polar depth map.
+  * @param Xi_numlines                 height of the polar depth map
+  * @param Xi_medFiltSize0             median filter size for the range imgae.
+  * @param Xi_medFiltSize1             median filter size for the thresh image.
+  * @param Xi_distFromMedianThresh     max distance between point and median filter's result.
+  * @param Xi_pts                      input xyz image. assuming row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
+  * @param Xo_ptsDenoised              denoised point cloud. assumes size at least as Xi_pts size.
+  * @return                            size of point cloud.  */
+  int DenoiseOrderedPointCloud(int Xi_lineWidth, int Xi_numlines, int Xi_medFiltSize0, int Xi_medFiltSize1, float Xi_distFromMedianThresh, CVec3* Xi_pts, CVec3* Xo_ptsDenoised)
+  {
+    int totalSize = Xi_lineWidth * Xi_numlines;
+
+    //convert to range image (each pixle in ptsLocal has it's xyz).
+    float* rangeImage = new float[totalSize];
+    for (int ptrIndex = 0; ptrIndex < totalSize; ptrIndex++)
+    {
+      rangeImage[ptrIndex] = Length(Xi_pts[ptrIndex]);
+    }
+
+    //find diferent points:
+    float* distFiltered = new float[totalSize];
+    float* threshFiltered = new float[totalSize];
+
+    Median2DPowOf2(Xi_lineWidth, Xi_numlines, Xi_medFiltSize0, rangeImage, distFiltered);
+
+    for (int row = 0; row < Xi_numlines; row++)
+    {
+      for (int col = 0; col < Xi_lineWidth; col++)
+      {
+        int index = (row * Xi_lineWidth) + col;
+        distFiltered[index] = (abs(distFiltered[index] - rangeImage[index]) < Xi_distFromMedianThresh) ? 1.0f : 0.0f;
+      }
+    }
+
+    Median2DPowOf2(Xi_lineWidth, Xi_numlines, Xi_medFiltSize1, distFiltered, threshFiltered);
+
+    int outputSize = 0;
+    for (int row = 0; row < Xi_numlines; row++)
+    {
+      for (int col = 0; col < Xi_lineWidth; col++)
+      {
+        int index = (row * Xi_lineWidth) + col;
+
+        if ((distFiltered[index] == 1) && (threshFiltered[index] == 1))
+        {
+          Xo_ptsDenoised[outputSize] = Xi_pts[index];
+          outputSize++;
+        }
+      }
+    }
+
+    delete[] rangeImage;
+    delete[] distFiltered;
+    delete[] threshFiltered;
+
+    return outputSize;
+  }
+
+
+
   /** denose a point cloud.
   * @param Xi_lineWidth                width of the polar depth map.
   * @param Xi_numlines                 height of the polar depth map
-  * @param Xi_medFiltSize              median filter size.
+  * @param Xi_medFiltSize0             median filter size for the range imgae.
+  * @param Xi_medFiltSize1             median filter size for the thresh image.
   * @param Xi_distFromMedianThresh     max distance between point and median filter's result.
-  * @param Xio_pts                     in: point cloud,  out: denoised point cloud.
-  * @param Xo_mask                     denoised point cloud mask on orig input.
-  * @param removeIsolatedPixels        flag if to remove isolated pixels.  */
-  void DenoisePointCloud(int Xi_lineWidth, int Xi_numlines, int Xi_medFiltSize, float Xi_distFromMedianThresh, int& Xio_numPts, const CVec3* Xio_pts, bool* Xo_mask, bool removeIsolatedPixels = false)
+  * @param Xi_pts                      input xyz image. assuming row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
+  * @param Xo_ptsDenoised              denoised point cloud. assumes size at least as Xi_pts size.
+  * @return                            size of point cloud.  */
+  int DenoisePointCloud(float Xi_res, int Xi_medFiltSize0, int Xi_medFiltSize1, float Xi_distFromMedianThresh, int Xi_numPts, CVec3* Xi_pts, CVec3* Xo_ptsDenoised)
   {
-    //TODO: waiting for final algorithm version.
+    //float res = float(2 * M_PI) / (128 * 5); //TODO
 
-    //float* RangeImage;
-    ////calc range image.
-
-    ////TODO: will it be better NOT to allocate every time this function called but rewrite over the same memory over and over?
-    ////      or use only one matrix of each type?
-    //float* Median_rangeImage = new float[Xi_lineWidth*Xi_numlines];
-    //bool* distFromMedianMask = new bool[Xi_lineWidth*Xi_numlines];
-    //bool* median_distFromMedianMask = new bool[Xi_lineWidth*Xi_numlines];
-    //bool* denoisingMask = new bool[Xi_lineWidth*Xi_numlines]; //newMedianMask
-    //bool* denoisingMask_median = new bool[Xi_lineWidth*Xi_numlines];
-    ////median filter on RangeImage to Median_rangeImage, filter size medFiltSize.
-
-    //for (int row = 0; row < Xi_numlines; row++)
+    //CSpatialHash2D hashedCloud(Xi_res);
+    //float* range = new float[Xi_numPts];
+    //bool* underThresh = new bool[Xi_numPts];
+    //for (int ptIndex = 0; ptIndex < Xi_numPts; ptIndex++)
     //{
-    //  for (int col = 0; col < Xi_lineWidth; col++)
-    //  {
-    //    int index = row * Xi_lineWidth + col;
-    //    float distFromMedian = abs(RangeImage[index] - Median_rangeImage[index]);
-    //    distFromMedianMask[index] = distFromMedian < Xi_distFromMedianThresh;
-    //  }
+    //  underThresh[ptIndex] = false;
+    //  range[ptIndex] = Length(Xi_pts[ptIndex]);
+    //  hashedCloud.Add(Xi_pts[ptIndex], range + ptIndex);
     //}
 
-    ////median filter on distFromMedianMask to median_distFromMedianMask, filter size medFiltSize.
-    //for (int row = 0; row < Xi_numlines; row++)
+    //int bufSize = Xi_medFiltSize0 * Xi_medFiltSize0;
+    //void** buf = new void* [bufSize];
+    //CVec3* nearPts = new CVec3[bufSize];
+    //float max2DRadius = (Xi_medFiltSize0 >> 1) * res;
+    //for (int ptIndex = 0; ptIndex < Xi_numPts; ptIndex++)
     //{
-    //  for (int col = 0; col < Xi_lineWidth; col++)
-    //  {
-    //    int index = row * Xi_lineWidth + col;
-    //    bool changed1to0Mask = (distFromMedianMask[index] - median_distFromMedianMask[index]) == 1;
-    //    denoisingMask[index] = distFromMedianMask[index] && !changed1to0Mask;
-    //  }
+    //  hashedCloud.GetNear(Xi_pts[ptIndex], bufSize, buf, nearPts, max2DRadius);
+
+    //  std::nth_element((float*)(*buf), (float*)(*buf) + (bufSize>>1), (float*)(*buf) + bufSize);
     //}
-
-    //if (removeIsolatedPixels)
-    //{
-    //  //median filter on denoisingMask to denoisingMask_median, filter size medFiltSize.
-    //  for (int row = 0; row < Xi_numlines; row++)
-    //  {
-    //    for (int col = 0; col < Xi_lineWidth; col++)
-    //    {
-    //      int index = row * Xi_lineWidth + col;
-    //      bool isolatedPixels = (denoisingMask[index] - denoisingMask_median[index] == 1);
-    //      if (isolatedPixels)
-    //        denoisingMask[index] = false;
-    //    }
-    //  }
-
-    //}
-
-
-
-
-    //delete[] Median_rangeImage;
-    //delete[] distFromMedianMask;
+    //
+    return 0;
   }
 
+
+
   /** downsample a point cloud. Divides to grid from minXYZ (of pts) to max XYZ, of size m_voxelSize.
-  *  If more than one point in same grid index, takes only first one.
-  * @param Xi_voxelSize            size of a voxel in grid. if equal zero - NO downsampling.
-  * @param Xio_pts                 in: point cloud,  out: downsampled point cloud. */
+   *  If more than one point in same grid index, takes only first one.
+   * @param Xi_voxelSize            size of a voxel in grid. if equal zero - NO downsampling.
+   * @param Xio_pts                 in: point cloud,  out: downsampled point cloud. */
   void DownSamplePointCloud(float Xi_voxelSize, int& Xio_numPts, CVec3* Xio_pts)
   {
     float InvVoxelSize = 1.0f / Xi_voxelSize;
@@ -437,8 +717,8 @@ namespace tpcl
       float y = Xio_pts[ptrIndex].y;
       float z = Xio_pts[ptrIndex].z;
 
-      xMin = min(xMin, x);    yMin = min(yMin, y);    zMin = min(zMin, z);
-      xMax = max(xMax, x);    yMax = max(yMax, y);    zMax = max(zMax, z);
+      xMin = MinT(xMin, x);    yMin = MinT(yMin, y);    zMin = MinT(zMin, z);
+      xMax = MaxT(xMax, x);    yMax = MaxT(yMax, y);    zMax = MaxT(zMax, z);
     }
 
     //create downsampling vector:
@@ -484,19 +764,6 @@ namespace tpcl
   }
 
 
-  /** remove out liers of a point cloud.
-  * @param Xio_pts                 in: point cloud,  out: point cloud without outliers.
-  * @param Xio_mask                in: mask of downsampled orig PC. out: mask on downsampled input without outliers. */
-  void RemoveOutliersPointCloud(int& Xio_numPts, const CVec3* Xio_pts, bool* Xio_mask)
-  {
-    //TODO: might be removed.
-  }
-
-
-
-
-
-
 
   /******************************************************************************
   *                           EXPORTED CLASS METHODS                            *
@@ -517,18 +784,7 @@ namespace tpcl
   CCoarseRegister::CCoarseRegister()
   {
     m_opts = new CRegOptions;
-    CRegOptions* optsP = (CRegOptions*)m_opts;
-    optsP->m_k_normalEstimation   = 0; //the number of points used for local plane fitting.
-//    optsP->m_viewNormalFlip       = ; //normal vectors direction flipped towards the viewpoint viewNormalFlip.
-    optsP->m_voxelSize            = 0; //if >0, use voxel grid downsampling.
-//    optsP->m_floodSource_xy       = ; //x y coordinantes from which to start flood for ground segmentaion in ViewpointGridCreation.
-    optsP->m_heightMapRes         = 0; //resolution for height map used in ViewpointGridCreation.
-    optsP->m_lineWidth            = 0; // width of the polar depth map
-    optsP->m_numlines             = 0; // height of the polar depth map 
-    optsP->m_searchRange          = 0; //range of grid locations to check. if not using GPS this needs to be set to inf.
-    optsP->m_medFiltSize          = 0; //deniseing median filter size.
-    optsP->m_distFromMedianThresh = 0; //max distance between point and median filter's result.
-
+    //CRegOptions* optsP = (CRegOptions*)m_opts;
     m_dictionary = new CRegDictionaryE;
   }
 
@@ -569,15 +825,13 @@ namespace tpcl
     m_numPtsGlobal = Xi_numPts;
 
     //preprocess global cloud:
-    DownSamplePointCloud(optsP->m_voxelSize, m_numPtsGlobal, m_ptsGlobal);
-
-
+    DownSamplePointCloud(optsP->m_voxelSizeGlobal, m_numPtsGlobal, m_ptsGlobal);
 
     //create grid's position and orientation: 
     dictionaryP->ViewpointGridCreation(optsP->m_d_grid, optsP->m_d_sensor, Xi_numPts, Xi_pts);
 
     //fill the dictionary entries with their descriptors:
-    dictionaryP->DescriptorsCreation(Xi_numPts, Xi_pts, optsP->m_lineWidth, optsP->m_numlines);
+    dictionaryP->DescriptorsCreation(optsP->m_r_max, optsP->m_r_min, Xi_numPts, Xi_pts, optsP->m_lineWidth, optsP->m_numlines);
   }
 
 
@@ -586,34 +840,53 @@ namespace tpcl
   *: Method name: GetLocalRegistrationCandidates
   *
   ******************************************************************************/
-  int CCoarseRegister::GetLocalRegistrationCandidates(int Xi_maxCandidates, int Xi_numPts, const CVec3* Xi_pts, CVec3 Xi_originApprox, int* Xo_candidates)
+  int CCoarseRegister::GetLocalRegistrationCandidates(int Xi_maxCandidates, CVec3* Xi_pts, CVec3 Xi_originApprox, int* Xo_candidates, float* Xo_grades, CMat4* Xo_rotations, int Xi_numPts, int Xi_numlines, CVec3* Xi_GPS)
   {
-    int NumOfCandidates = 0;
+    CRegOptions* optsP = (CRegOptions*)m_opts;
+    CRegDictionaryE* dictionaryP = (CRegDictionaryE*)m_dictionary;
+    CVec3* ptsPrePro = new CVec3[Xi_numPts];
+    int totalPixels;
 
-    ////Preprocess local cloud:
-    //bool* local_mask = NULL; //TODO
-    //DenoisePointCloud(m_lineWidth, m_numlines, m_medFiltSize, m_distFromMedianThresh, Xi_numPts, Xi_pts, local_mask);
-    //DownSamplePointCloud(m_voxelSize, Xi_numPts, Xi_pts);
+    //preprocess local cloud:
+    if (Xi_numlines > 0)
+    {
+      int lineWidth = Xi_numPts / Xi_numlines;
+      totalPixels = DenoiseOrderedPointCloud(lineWidth, Xi_numlines, optsP->m_medFiltSize0, optsP->m_medFiltSize1, optsP->m_distFromMedianThresh, Xi_pts, ptsPrePro);
+    }
+    else
+    {
+      float res = float(2 * M_PI) / (128 * 5);
+      totalPixels = DenoisePointCloud(res, optsP->m_medFiltSize0, optsP->m_medFiltSize1, optsP->m_distFromMedianThresh, Xi_numPts, Xi_pts, ptsPrePro);
+    }
 
+    DownSamplePointCloud(optsP->m_voxelSizeLocal, totalPixels, ptsPrePro);
 
-    ////create descriptor - range image:
-    //float* LocalRangeImage = new float[m_lineWidth*m_numlines];
-    //ConvertPCL2polarMap(m_lineWidth, m_numlines, Xi_numPts, Xi_pts, LocalRangeImage);
+    ////remove points that too close to sensor:
+    int postProSize = 0;
+    for (int ptrIndex = 0; ptrIndex < totalPixels; ptrIndex++)
+    {
+      float len = Length(ptsPrePro[ptrIndex]);
+      if (len < optsP->m_r_min)
+        continue;
+      ptsPrePro[postProSize] = ptsPrePro[ptrIndex];
+      postProSize++;
+    }
+    totalPixels = postProSize;
 
-    ////create range image's 2D FFT:
-    //float* LocalRangeImageFFT = new float[m_lineWidth*m_numlines * 2]; // *2 - unreal values.
-    ////DO: create 2D fft. FFT2D(m_lineWidth, m_numlines, LocalRangeImage, LocalRangeImageFFT);
+    //create range image:
+    float* descriptor = new float[optsP->m_lineWidth * optsP->m_numlines];
+    dictionaryP->ConvertPCL2descriptor(optsP->m_lineWidth, optsP->m_numlines, totalPixels, ptsPrePro, descriptor);
 
+    //create range image's 2D FFT:
+    std::complex<float>* descriptorFFT = new std::complex<float>[totalPixels];
+    dictionaryP->ConvertDescriptor2FFT(optsP->m_lineWidth, optsP->m_numlines, descriptor, descriptorFFT);
+    
+    
+    int NumOfCandidates = dictionaryP->SearchDictionary(Xi_maxCandidates, optsP->m_searchRange, descriptorFFT, Xo_candidates, Xo_grades, Xo_rotations, optsP->m_lineWidth, optsP->m_numlines, Xi_GPS);
 
-    //int* localDescriptor;
-
-    //U_CreateDescriptor(RangeImage, localDescriptor);
-    //
-    //std::vector<CRegDictionaryEntry> candidates;
-    ////add use of GPS location filtering.
-    //m_dictionary->SearchDictionary(localDescriptor, Xo_candidates, Xo_grades); //DO: should return candidates so need Xi_maxCandidates.
-
-    //delete[] RangeImage;
+    delete[] ptsPrePro;
+    delete[] descriptor;
+    delete[] descriptorFFT;
 
     return NumOfCandidates;
   }
@@ -625,24 +898,27 @@ namespace tpcl
   *: Method name: GetLocalRegistration
   *
   ******************************************************************************/
-  float CCoarseRegister::GetLocalRegistration(CMat4& Xo_best)
+  void CCoarseRegister::GetLocalRegistration(int Xi_NumOfCandidates, int* Xi_candidates, float* Xi_grades, CMat4* Xi_rotations, CMat4& Xo_best)
   {
-    return 0;
+    int maxIndex = 0;
+    float maxGrade = Xi_grades[0];
+    //search for candidate with highest grade:
+    for (int canIndex = 1; canIndex < Xi_NumOfCandidates; canIndex++)
+    {
+      if (Xi_grades[canIndex] > maxGrade)
+      {
+        maxIndex = canIndex;
+        maxGrade = Xi_grades[canIndex];
+      }
+    }
+
+    Xo_best = Xi_rotations[maxIndex];
   }
 
-
+ 
   /******************************************************************************
   *                             Protected methods                               *
   ******************************************************************************/
-
-
-  /** creates the Height Profile descriptor.
-  * @param Xi_pts        point cloud
-  * @param Xo_descriptor   Height Profile descriptor */
-  void CCoarseRegister::U_CreateDescriptor(float* Xi_RangeImage, int* Xo_descriptor)
-  {
-
-  }
 
 
   /******************************************************************************
@@ -657,6 +933,23 @@ namespace tpcl
   /******************************************************************************
   *                            INTERNAL FUNCTIONS                               *
   ******************************************************************************/
+
+
+  void CRegOptions::SetDefaults()
+  {
+    m_voxelSizeGlobal = 0.5;       // if >0, use voxel grid downsampling.
+    m_voxelSizeLocal = 0.25;       // if >0, use voxel grid downsampling.
+    m_d_grid = 3;                  // grid resolution.
+    m_d_sensor = 2;                // dist from ground for grid point.
+    m_lineWidth = 128;             // width of the polar depth map
+    m_numlines = 64;               // height of the polar depth map 
+    m_searchRange = 30;            // range of grid locations to check. if not using GPS this needs to be set to inf.
+    m_medFiltSize0 = 7;            // deniseing median filter size for the range imgae.
+    m_medFiltSize1 = 5;            // deniseing median filter size for the thresh image.
+    m_distFromMedianThresh = 0.03f; // max distance between point and median filter's result.
+    m_r_max = 60;                  // maximum distance from grid point for descriptor creation.
+    m_r_min = 2;                   // minimum distance from grid point for descriptor creation.
+  }
 
 
 } //namespace tpcl
