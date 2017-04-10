@@ -26,6 +26,7 @@
 #include "registration.h"
 #include "features.h"
 #include "SpatialHash.h"
+#include "tran.h"
 #include "common.h"
 #include <vector>
 #include <complex>
@@ -306,8 +307,7 @@ namespace tpcl
         }
       }
 
-      //TODO: resolve link problem:
-      //IfrMath::DFT2D(unsigned int(Xi_desc1Dsize), unsigned int(Xi_desc2Dsize), Xo_DescriptorFFT);
+      DFT2D(unsigned int(Xi_desc1Dsize), unsigned int(Xi_desc2Dsize), Xo_DescriptorFFT);
     }
 
 
@@ -404,8 +404,7 @@ namespace tpcl
         PhCor[index] /= lengthSum;
       }
 
-      //TODO: resolve link problem:
-      //IfrMath::DFT2D(Xi_desc1Dsize, Xi_desc2Dsize, PhCor, false);
+      DFT2D(Xi_desc1Dsize, Xi_desc2Dsize, PhCor, false);
 
       //TODO: check if shift is needed. sent same image twice and see if in the result the delta is in the center or not.
 
