@@ -23,11 +23,13 @@
 *
 ******************************************************************************/
 #include "dbg.h"
+#include "common.h"
+#include <string>
 
 
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
+//#ifdef _DEBUG
+//#define new DEBUG_NEW
+//#endif
 
 
 namespace tpcl
@@ -169,8 +171,8 @@ namespace tpcl
 
     BITMAPFILEHEADER l_BmpFileHdr;
     l_BmpFileHdr.bfType = 0x4d42;
-    int a = sizeof(BITMAPFILEHEADER);
-    int b = sizeof(BITMAPINFOHEADER);
+    //int a = sizeof(BITMAPFILEHEADER);
+    //int b = sizeof(BITMAPINFOHEADER);
     l_BmpFileHdr.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
     //l_BmpFileHdr.bfOffBits += sizeof(CGeoSimExtraInfo);
 
@@ -180,7 +182,7 @@ namespace tpcl
     l_BmpInfoHdr.biHeight = Xi_Height;
     l_BmpInfoHdr.biPlanes = 1;
     l_BmpInfoHdr.biBitCount = 24;
-    l_BmpInfoHdr.biCompression = BI_RGB;
+    l_BmpInfoHdr.biCompression = 0L;
     l_BmpInfoHdr.biSizeImage = 0;//m_Width*m_Height;
     l_BmpInfoHdr.biClrUsed = 0;
     l_BmpInfoHdr.biClrImportant = 0;
@@ -236,7 +238,7 @@ namespace tpcl
         int index = y*Xi_Width + x;
         //unsigned char val = unsigned char(round((Xi_img[index] - minVal) * multVal));
         
-        float clampedValNormalized = (max(min(Xi_img[index], bRange[1]), bRange[0]) - bRange[0]) * multVal;
+        float clampedValNormalized = (MaxT(MinT(Xi_img[index], bRange[1]), bRange[0]) - bRange[0]) * multVal;
         //clampedValNormalized = 1.f - pow(1.f - clampedValNormalized, 2);
         if (clampedValNormalized <= 0.33)
         {

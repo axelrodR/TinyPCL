@@ -67,6 +67,7 @@ namespace tpcl
 ******************************************************************************/
 template<class T> inline T Clamp(T v, T mn, T mx) { return v < mn ? mn : (v > mx ? mx : v); }
 
+void Log(...) {}
 
 /******************************************************************************
 *                           EXPORTED CLASS METHODS                            *
@@ -231,8 +232,8 @@ bool CGrid2dBase::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const C
 }
 
 
-bool CGrid2dBase::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_v1, const CVertexUV& Xi_v2,
-                               int Xi_imgWidth, int Xi_imgHeight, const unsigned int* Xi_img)
+bool CGrid2dBase::U_RasterizeTri(const CVertexUV& /*Xi_v0*/, const CVertexUV& /*Xi_v1*/, const CVertexUV& /*Xi_v2*/,
+                               int /*Xi_imgWidth*/, int /*Xi_imgHeight*/, const unsigned int* /*Xi_img*/)
 {
   return false;
 }

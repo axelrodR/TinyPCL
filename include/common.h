@@ -45,7 +45,7 @@ namespace tpcl
   template<class T> inline T AbsT(T a) { return a < 0 ? -a : a; }
 
 
-  void Log(...) {}
+  //void Log(...) {}
 
 
 } // namespace tpcl

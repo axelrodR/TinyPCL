@@ -274,7 +274,7 @@ namespace tpcl
     int l_numIter = MAX_ITERS;
 
     // random concensus iteration
-    for (int i=0; i<l_numIter; i++)
+    for (int iO =0; iO<l_numIter; iO++)
     {
       // choose a random sample
       for (int i=0; i<RANDOM_SAMPLE_SIZE; i++)

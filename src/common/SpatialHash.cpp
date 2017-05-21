@@ -129,7 +129,7 @@ void CSpatialHash2D::Add(const CVec3& Xi_pos, void* Xi_obj)
 
   // convert coordinates to cell coordinates
   CVec3 l_v = (Xi_pos - m_pivot) * m_resInv;
-  CInt3 l_cell = CInt3(l_v.x, l_v.y, l_v.z);
+  CInt3 l_cell = CInt3((int)l_v.x, (int)l_v.y, (int)l_v.z);
 
   // add to cell
   MapInt3::iterator l_it = l_data->find(l_cell);
@@ -163,7 +163,7 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
   float max2dRadSqr = Xi_max2DRadius * Xi_max2DRadius;
   // convert coordinates to cell coordinates
   CVec3 l_v = (Xi_pos - m_pivot) * m_resInv;
-  CInt3 l_cell = CInt3(l_v.x, l_v.y, l_v.z);
+  CInt3 l_cell = CInt3((int)l_v.x, (int)l_v.y, (int)l_v.z);
   int rad = int(ceil(Xi_max2DRadius * m_resInv));
 
   // go over all cells and objects in them to find the minimal distance
@@ -171,7 +171,7 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
   {
     for (int y=-rad; y<=rad; y++)
     {
-      CInt3 l_c = CInt3(float(l_cell.x + x), float(l_cell.y + y), 0.0f);
+      CInt3 l_c = CInt3(int(l_cell.x + x), int(l_cell.y + y), 0);
       MapInt3::const_iterator l_it = l_data->find(l_c);
       if (l_it == l_data->end()) 
         continue; // empty cell
@@ -207,14 +207,14 @@ int CSpatialHash2D::GetNear(const CVec3& Xi_pos, int Xi_bufSize, void** Xo_buf, 
 {
   MapInt3* l_data = (MapInt3*)m_data;
   int l_n = 0;    // number of objects
-  float l_minDist = 1E10;
+  //float l_minDist = 1E10;
   float s_epsilon = 0.01f * m_res;
   if (Xi_max2DRadius < s_epsilon)
     Xi_max2DRadius  = s_epsilon;
   float max2dRadSqr = Xi_max2DRadius * Xi_max2DRadius;
   // convert coordinates to cell coordinates
   CVec3 l_v = (Xi_pos - m_pivot) * m_resInv;
-  CInt3 l_cell = CInt3(l_v.x, l_v.y, l_v.z);
+  CInt3 l_cell = CInt3((int)l_v.x, (int)l_v.y, (int)l_v.z);
   int rad = int(ceil(Xi_max2DRadius * m_resInv));
 
   // go over all cells and objects in them to find the minimal distance
@@ -222,7 +222,7 @@ int CSpatialHash2D::GetNear(const CVec3& Xi_pos, int Xi_bufSize, void** Xo_buf, 
   {
     for (int y=-rad; y<=rad; y++)
     {
-      CInt3 l_c = CInt3(float(l_cell.x + x), float(l_cell.y + y), 0.0f);
+      CInt3 l_c = CInt3(int(l_cell.x + x), int(l_cell.y + y), 0);
       MapInt3::const_iterator l_it = l_data->find(l_c);
       if (l_it == l_data->end()) 
         continue;   // empty cell

@@ -23,32 +23,17 @@
 *: Package Name: sldrcr_sp
 *
 ******************************************************************************/
-#include "registration.h"
+//#include "registration.h"
+#include "RegistDict.h"
 #include "features.h"
 #include "SpatialHash.h"
 #include "tran.h"
 #include "common.h"
-
-/******************************************************************************
-*
-*: Package Name: sldrcr_sp
-*
-******************************************************************************/
-#include <D3dx9core.h> // uncommenet if using DirectX
-#include <ifr/ifrgen/ifrgen_stnd.h>
-#include "sldrcr_sp.h"
-#include "sldrcr_rdi.h"
-#include "sldrcr_ftr.h"
-#include "sldrcr_icp.h"
-#include <gen/gengmtrx/gengmtrx_spat.h>
-#include <gen/gengmtrx/gengmtrx_vec.h>
-#include <vector>
+#include "RegICP.h"
+#include "OrientDict.h"
 #include <complex>
-#include <IFR/ifrmath/ifrmath_tran.h>
-#include <algorithm>
-//#include <IFR\ifrlog\ifrlog.h>
-#include <IFR\ifrlog\ifrlog_prfl.h>
-#include <omp.h>
+#include "../../include/vec.h"
+
 
 //#define DEBUG_LOCAL_RANGE_IMAGE
 #ifdef DEBUG_LOCAL_RANGE_IMAGE
@@ -56,14 +41,12 @@
 #endif
 
 
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
+//#ifdef _DEBUG
+//#define new DEBUG_NEW
+//#endif
 
 
-using namespace GenGmtrx;
-
-namespace SLDR
+namespace tpcl
 {
 
   /******************************************************************************
@@ -130,12 +113,12 @@ namespace SLDR
   *
   ******************************************************************************/
   CCoarseRegister::CCoarseRegister()
-    {
+  {
     m_opts = new CRegOptions;
     CRegOptions* optsP = (CRegOptions*)m_opts;
 
     m_dictionary = new CRegDictionary(optsP->m_voxelSizeGlobal, optsP->m_r_max, optsP->m_r_min, optsP->m_lineWidth, optsP->m_numlines);
-    }
+  }
 
   /******************************************************************************
   *
@@ -143,13 +126,13 @@ namespace SLDR
   *
   ******************************************************************************/
   CCoarseRegister::~CCoarseRegister()
-      {
+  {
     CRegOptions* optsP = (CRegOptions*)m_opts;
     delete optsP;
 
     CRegDictionary* dictionaryP = (CRegDictionary*)m_dictionary;
     delete dictionaryP;
-    }
+  }
 
 
 
@@ -159,10 +142,10 @@ namespace SLDR
   *
   ******************************************************************************/
   float CCoarseRegister::RangeNeeded()
-        {
+  {
     CRegOptions* optsP = (CRegOptions*)m_opts;
     return (optsP->m_searchRange + optsP->m_r_max);
-      }
+  }
 
 
 
@@ -171,15 +154,13 @@ namespace SLDR
   *: Method name: MainPointCloudUpdate
   *
   ******************************************************************************/
-  void CCoarseRegister::MainPointCloudUpdate(int Xi_numPts, const D3DXVECTOR3* Xi_pts, bool Xi_clean)
-        {
-    PROFILE("MainPointCloudUpdate");
-
+  void CCoarseRegister::MainPointCloudUpdate(int Xi_numPts, const CVec3* Xi_pts, bool Xi_clean)
+  {
     CRegOptions* optsP = (CRegOptions*)m_opts;
     CRegDictionary* dictionaryP = (CRegDictionary*)m_dictionary;
 
     //preprocess main cloud:
-    D3DXVECTOR3* ptsGlobal = new D3DXVECTOR3[Xi_numPts];
+    CVec3* ptsGlobal = new CVec3[Xi_numPts];
     int numPtsGlobal = Xi_numPts;
 
     Features::DownSamplePointCloud(optsP->m_voxelSizeGlobal, Xi_numPts, Xi_pts, numPtsGlobal, ptsGlobal);
@@ -191,7 +172,7 @@ namespace SLDR
     dictionaryP->DictionaryUpdate(numPtsGlobal, ptsGlobal, optsP->m_d_grid, optsP->m_d_sensor);
 
     delete[] ptsGlobal;
-    }
+  }
 
 
   /******************************************************************************
@@ -210,16 +191,15 @@ namespace SLDR
   *: Method name: SecondaryPointCloudRegistration
   *
   ******************************************************************************/
-  float CCoarseRegister::SecondaryPointCloudRegistration(D3DXMATRIX& Xo_registration, D3DXVECTOR3* Xi_pts, int Xi_numPts, int Xi_lineWidth, D3DXMATRIX* Xi_estimatedOrient)
+  float CCoarseRegister::SecondaryPointCloudRegistration(CMat4& Xo_registration, CVec3* Xi_pts, int Xi_numPts, int Xi_lineWidth, CMat4* Xi_estimatedOrient)
     {
-    PROFILE("SecondaryPointCloudRegistration");
     const int maxCandidates = 10;
       
     float grades[maxCandidates];
-    D3DXMATRIX candRegistrations[maxCandidates];
+    CMat4 candRegistrations[maxCandidates];
 
     CRegOptions* optsP = (CRegOptions*)m_opts;
-    D3DXVECTOR3* ptsPrePro = new D3DXVECTOR3[Xi_numPts];
+    CVec3* ptsPrePro = new CVec3[Xi_numPts];
 
     int totalPixels;
 
@@ -259,9 +239,8 @@ namespace SLDR
   *: Method name: SecondaryPointCloudRegistrationCandidates
   *
   ******************************************************************************/
-  int CCoarseRegister::SecondaryPointCloudRegistrationCandidates(int Xi_maxCandidates, D3DXVECTOR3* Xi_pts, float* Xo_grades, D3DXMATRIX* Xo_rotations, int Xi_numPts, D3DXMATRIX* Xi_estimatedOrient)
+  int CCoarseRegister::SecondaryPointCloudRegistrationCandidates(int Xi_maxCandidates, CVec3* Xi_pts, float* Xo_grades, CMat4* Xo_rotations, int Xi_numPts, CMat4* Xi_estimatedOrient)
         {
-    PROFILE("SecondaryPointCloudRegistrationCandidates");
 
     CRegOptions* optsP = (CRegOptions*)m_opts;
     CRegDictionary* dictionaryP = (CRegDictionary*)m_dictionary;
@@ -281,15 +260,15 @@ namespace SLDR
     std::complex<float>* descriptorDFT = new std::complex<float>[optsP->m_lineWidth * optsP->m_numlines];
     dictionaryP->Descriptor2DFT(descriptor, descriptorDFT);
 
-    D3DXVECTOR3 estimatedOrient;
+    CVec3 estimatedOrient;
     float searchRange = optsP->m_searchRange;
     if (Xi_estimatedOrient != NULL)
         {
-      estimatedOrient = D3DXVECTOR3(Xi_estimatedOrient->m[3][0], Xi_estimatedOrient->m[3][1], Xi_estimatedOrient->m[3][2]);
+      estimatedOrient = CVec3(Xi_estimatedOrient->m[3][0], Xi_estimatedOrient->m[3][1], Xi_estimatedOrient->m[3][2]);
         }
     else
           {
-      D3DXVECTOR3 dicMinBBox, dicMaxBBox;
+      CVec3 dicMinBBox, dicMaxBBox;
       dictionaryP->getBBox(dicMinBBox, dicMaxBBox);
       estimatedOrient = (dicMinBBox + dicMaxBBox) / 2;
       searchRange = Dist2D(dicMinBBox, dicMaxBBox);
@@ -311,12 +290,9 @@ namespace SLDR
   *: Method name: GetRegistrationFromListOfCandidates
   *
   ******************************************************************************/
-  float CCoarseRegister::GetRegistrationFromListOfCandidates(int Xi_NumOfCandidates, int Xi_numPts, D3DXVECTOR3* Xi_pts, D3DXMATRIX* Xi_registrations, D3DXMATRIX& Xo_registration)
+  float CCoarseRegister::GetRegistrationFromListOfCandidates(int Xi_NumOfCandidates, int Xi_numPts, CVec3* Xi_pts, CMat4* Xi_registrations, CMat4& Xo_registration)
   {
-    PROFILE("GetRegistrationFromListOfCandidates");
     CRegOptions* optsP = (CRegOptions*)m_opts;
-    CRegDictionary* dictionaryP = (CRegDictionary*)m_dictionary;
-
 
     //stay with candidates of minimum RMSE:
     float* CandRMSEs = new float[Xi_NumOfCandidates];
@@ -328,7 +304,7 @@ namespace SLDR
 
     const int fNumOfCandWanted = 3; //Final Num Of Candidates wanted
     int finalCandidates[fNumOfCandWanted] = { 0 };
-    int fNumOfCand = min(fNumOfCandWanted, Xi_NumOfCandidates);
+    int fNumOfCand = MinT(fNumOfCandWanted, Xi_NumOfCandidates);
     for (int fCand = 0; fCand < fNumOfCand; fCand++)
   {
       for (int cand = 0; cand < Xi_NumOfCandidates; cand++)
@@ -348,7 +324,7 @@ namespace SLDR
     for (int fCand = 0; fCand < fNumOfCand; fCand++)
     {
       int cand = finalCandidates[fCand];
-      D3DXMATRIX l_icpReg;
+      CMat4 l_icpReg;
       double grade = icpRegistration.SecondaryPointCloudRegistration(l_icpReg, Xi_pts, Xi_numPts, 1, Xi_registrations + cand);
       if (grade < bestGrade)
       {
@@ -362,7 +338,7 @@ namespace SLDR
 
     delete[] CandRMSEs;
  
-    return bestGrade;
+    return float(bestGrade);
   }
 
 

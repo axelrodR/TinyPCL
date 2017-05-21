@@ -24,15 +24,24 @@
 *: Package Name: sldrcr_sp
 *
 ******************************************************************************/
+#include "OrientDict.h"
+#include "SpatialHash.h"
+#include "features.h"
+#include "common.h"
+#include "tran.h"
+#include <complex>
+#include <vector>
+#include "../../include/vec.h"
+
 
 //#define DEBUG_LOCAL_RANGE_IMAGE
 #ifdef DEBUG_LOCAL_RANGE_IMAGE
 #include "dbg.h"
 #endif
 
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
+//#ifdef _DEBUG
+//#define new DEBUG_NEW
+//#endif
 
 
 
@@ -68,7 +77,19 @@ namespace tpcl
   /******************************************************************************
   *                              INTERNAL CLASSES                               *
   ******************************************************************************/
-
+  /** resize an array, retaining previous values and set new ellements to zero.
+  * @param Xio_ptr          input: array of size Xi_size. output: array of size Xi_newSize with all ellements from input array.
+  * @param Xi_size          size of input array.
+  * @param Xi_newSize       size of output array. */
+  template <typename T>
+  static void resizeArray(T* &Xio_ptr, const int& Xi_size, const int& Xi_newSize)
+  {
+    T* ptrExtended = new T[Xi_newSize];
+    memset(ptrExtended, 0, Xi_newSize * sizeof(T));
+    memcpy(ptrExtended, Xio_ptr, (MinT(Xi_size, Xi_newSize)) * sizeof(T));
+    delete[] Xio_ptr;
+    Xio_ptr = ptrExtended;
+  };
 
 
 
@@ -229,12 +250,10 @@ namespace tpcl
   ******************************************************************************/
   void COrientedGrid::PointCloudUpdate(int Xi_numPts, const CVec3* Xi_pts, CVec3& Xo_minBox, CVec3& Xo_maxBox)
   {
-    PROFILE("PointCloudUpdate");
-
     CSpatialHash2D& mainHashed = *((CSpatialHash2D*)(m_mainHashed));
 
     int totalPts = m_numPtsMain + Xi_numPts;
-    Features::resizeArray(m_ptsMain, m_numPtsMain, totalPts);
+    resizeArray(m_ptsMain, m_numPtsMain, totalPts);
 
     Xo_minBox = Xo_maxBox = Xi_pts[0];
     for (int ptrIndex = 0; ptrIndex < Xi_numPts; ptrIndex++)
@@ -262,8 +281,6 @@ namespace tpcl
   ******************************************************************************/
   int COrientedGrid::ViewpointGridUpdate(float Xi_d_grid, float Xi_d_sensor, CVec3& Xi_minBox, CVec3& Xi_maxBox)
   {
-    PROFILE("ViewpointGridUpdate");
-
     CSpatialHash2D& mainHashed = *((CSpatialHash2D*)(m_mainHashed));
 
     float invGridRes = 1.0f / Xi_d_grid;
@@ -298,7 +315,7 @@ namespace tpcl
 
     int preSize = m_size;
     m_size += totalGridPoint;
-    Features::resizeArray(m_Orient, preSize, m_size);
+    resizeArray(m_Orient, preSize, m_size);
 
     //creating final grid's transformation matrix:
 #pragma omp parallel for //private(xGrid) collapse(2)
@@ -543,13 +560,11 @@ namespace tpcl
   ******************************************************************************/
   void CRegDictionary::DictionaryUpdate(int Xi_numPts, const CVec3* Xi_pts, float Xi_d_grid, float Xi_d_sensor)
   {
-    PROFILE("DictionaryUpdate");
-
     int preSize = PointCloudAndGridUpdate(Xi_numPts, Xi_pts, Xi_d_grid, Xi_d_sensor);
 
     //create vectors for the descriptors:
-    Features::resizeArray(m_descriptors, preSize, m_size);
-    Features::resizeArray(m_descriptorsDFT, preSize, m_size);
+    resizeArray(m_descriptors, preSize, m_size);
+    resizeArray(m_descriptorsDFT, preSize, m_size);
   }
 
 
@@ -562,7 +577,6 @@ namespace tpcl
   ******************************************************************************/
   void CRegDictionary::PCL2descriptor(int Xi_numPts, const CVec3* Xi_pts, float* Xo_RangeImage)
   {
-    //PROFILE("PCL2descriptor");
     int totalDescSize = m_descHeight * m_descWidth;
     float azimuthRes = m_descWidth / (2.0f * float(M_PI));
     float elevationRes = m_descHeight / float(M_PI);
@@ -606,7 +620,6 @@ namespace tpcl
   ******************************************************************************/
   void CRegDictionary::Descriptor2DFT(float* Xi_Descriptor, std::complex<float>* Xo_DescriptorDFT)
   {
-    //PROFILE("Descriptor2DFT");
     for (int index2 = 0; index2 < m_descHeight; index2++)
     {
       for (int index1 = 0; index1 < m_descWidth; index1++)
@@ -616,7 +629,7 @@ namespace tpcl
       }
     }
 
-    IfrMath::DFT2D(unsigned int(m_descWidth), unsigned int(m_descHeight), Xo_DescriptorDFT);
+    tpcl::DFT2D(unsigned int(m_descWidth), unsigned int(m_descHeight), Xo_DescriptorDFT);
   }
 
 
@@ -677,16 +690,15 @@ namespace tpcl
   ******************************************************************************/
   void CRegDictionary::BestPhaseCorr(std::complex<float>* Xi_descriptorDFT0, std::complex<float>* Xi_descriptorDFT1, int& Xo_bestRow, int& Xo_bestCol, float& Xo_bestScore)
   {
-    //PROFILE("BestPhaseCorr");
     Xo_bestScore = FLT_MIN;
     Xo_bestRow = 0;
     Xo_bestCol = 0;
 
     std::complex<float>* PhCor = new std::complex<float>[m_descWidth * m_descHeight];
 
-    IfrMath::UnitPhaseCorrelation(Xi_descriptorDFT0, Xi_descriptorDFT1, PhCor, unsigned int(m_descWidth), unsigned int(m_descHeight));
-    IfrMath::DFT2D(unsigned int(m_descWidth), unsigned int(m_descHeight), PhCor, false);
-    IfrMath::DFTshift0ToOrigin(PhCor, unsigned int(m_descWidth), unsigned int(m_descHeight));
+    tpcl::UnitPhaseCorrelation(Xi_descriptorDFT0, Xi_descriptorDFT1, PhCor, unsigned int(m_descWidth), unsigned int(m_descHeight));
+    tpcl::DFT2D(unsigned int(m_descWidth), unsigned int(m_descHeight), PhCor, false);
+    tpcl::DFTshift0ToOrigin(PhCor, unsigned int(m_descWidth), unsigned int(m_descHeight));
 
     //find max:
     for (int index2 = 0; index2 < m_descHeight; index2++)
@@ -717,13 +729,6 @@ namespace tpcl
   ******************************************************************************/
   int CRegDictionary::SearchDictionary(int Xi_maxCandidates, float Xi_searchRadius, std::complex<float>* Xi_descriptorDFT, int* Xo_candidates, float* Xo_grades, CMat4* Xo_orientations, const CVec3& Xi_estimatePos)
   {
-    PROFILE("SearchDictionary");
-    float finalMax = FLT_MIN;
-    int finalIndex = -1;
-    int finalrow = -1;
-    int finalcol = -1;
-
-
     int NumOfCandidates = 0;
     int minIndex = 0;
     Xo_grades[minIndex] = FLT_MAX;
@@ -744,13 +749,13 @@ namespace tpcl
     }
 
     #pragma omp parallel for
-    for (int inSrIndex = 0; inSrIndex < inSearchRadius.size(); inSrIndex++)
+    for (int inSrIndex = 0; inSrIndex < int(inSearchRadius.size()); inSrIndex++)
       GetEntryDescriptorDFT(inSearchRadius[inSrIndex]);
 
 
     int inSrIndex = 0;
     //take first Xi_maxCandidates entries from dictionary which were considered close enough to estimation:
-    for (inSrIndex; inSrIndex < inSearchRadius.size(); inSrIndex++)
+    for (inSrIndex; inSrIndex < (int)inSearchRadius.size(); inSrIndex++)
     {
       int gridIndex = inSearchRadius[inSrIndex];
 
@@ -777,7 +782,7 @@ namespace tpcl
 
 
     //continue combing dictionary (remaining with best Xi_maxCandidates Candidates:
-    for (inSrIndex; inSrIndex < inSearchRadius.size(); inSrIndex++)
+    for (inSrIndex; inSrIndex < (int)inSearchRadius.size(); inSrIndex++)
     {
       int gridIndex = inSearchRadius[inSrIndex];
 

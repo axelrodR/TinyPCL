@@ -305,7 +305,7 @@ bool CSimpleHgtMap::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const
 
 
 bool  CSimpleHgtMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_v1, const CVertexUV& Xi_v2,
-                                    int Xi_imgWidth, int Xi_imgHeight, const unsigned int* Xi_img)
+                                    int /*Xi_imgWidth*/, int /*Xi_imgHeight*/, const unsigned int* /*Xi_img*/)
 {
   const int w = GetWidth();
   const int h = GetHeight();
@@ -539,7 +539,7 @@ CDynamicHeightMap::CSpan* CDynamicHeightMap::AllocSpan()
     pool->m_next = m_pools;
     m_pools = pool;
     // Add new items to the free list.
-    CSpan* freelist = m_freeList;
+    //CSpan* freelist = m_freeList;
     CSpan* head = &pool->m_items[0];
     CSpan* it = &pool->m_items[SPANS_PER_POOL];
     do
@@ -578,8 +578,8 @@ bool CDynamicHeightMap::AddSpan(int Xi_x, int Xi_y, int Xi_hBegin, int Xi_hEnd, 
   CSpan* l_s = AllocSpan();
   if (!l_s)
     return false;
-  l_s->smin = Xi_hBegin;
-  l_s->smax = Xi_hEnd;
+  l_s->smin = (unsigned short)Xi_hBegin;
+  l_s->smax = (unsigned short)Xi_hEnd;
   l_s->info = Xi_area;
   l_s->facing = facing;
   l_s->m_next = 0;

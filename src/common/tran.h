@@ -62,15 +62,49 @@ namespace tpcl
   ******************************************************************************/
 
 
+  //assumes dimensions are powers of 2.
 
-  /** Descrete Fourier transform using butterfly 
-    * @param Xio_Data           both input data and output.
-    * @param Xi_N               length of both input data and result. */
+  /** forward/backwards 1D Descrete Fourier transform using butterfly.
+  * @param Xi_size            length of both input data and result.
+  * @param Xio_data           both input data and output.
+  * @param Xi_forward         if true - forward FFT. if false - backwards FFT. */
   bool DFT(unsigned int Xi_size, std::complex<float> *Xio_data, bool Xi_forward = true);
 
-  bool DFT2D(unsigned int Xi_width, unsigned int Xi_height, std::complex<float> *Xio_data, bool Xi_forward=true);
+  /** forward/backwards 2D Descrete Fourier transform using butterfly.
+  * @param Xi_width           width of both input data and result.
+  * @param Xi_height          height of both input data and result.
+  * @param Xio_data           both input data and output.
+  * @param Xi_forward         if true - forward FFT. if false - backwards FFT. */
+  bool DFT2D(unsigned int Xi_width, unsigned int Xi_height, std::complex<float> *Xio_data, bool Xi_forward = true);
 
-  //bool DFT(unsigned int Xi_size, std::complex<double> *Xio_data, bool Xi_forward = true);
+
+  /** shift (per dimension) by half of it's size, in order to center origin of axes (0,0).
+  * @param Xi_size            for 1D: length of both input data and result.
+  * @param Xi_width           for 2D: width of both input data and result.
+  * @param Xi_height          for 2D: height of both input data and result.
+  * @param Xio_data           both input data and output. */
+  void DFTshift0ToOrigin(std::complex<float> *Xio_data, unsigned int Xi_size);
+  void DFTshift0ToOrigin(std::complex<float> *Xio_data, unsigned int Xi_width, unsigned int Xi_height);
+
+
+  /** calculates phase correlation in the frequency domain (for both 1D and 2D signals).
+  * @param Xi_DFT0            DFT of the first signal.
+  * @param Xi_DFT1            DFT of the second signal.
+  * @param Xo_PhCor           DFT of input signals' phase correlation.
+  * @param Xi_Xi_width        for 1D/2D: size/width of the signals.
+  * @param Xi_Xi_height       fill if 2D signals: height of the signals. */
+  void PhaseCorrelation(std::complex<float>* Xi_DFT0, std::complex<float>* Xi_DFT1, std::complex<float>* Xo_PhCor, unsigned int Xi_width, unsigned int Xi_height = 1);
+
+
+  /** calculates phase correlation in the frequency domain (for both 1D and 2D signals).
+  *   in result size of each of the elements is either 1 or 0.
+  * @param Xi_DFT0            DFT of the first signal.
+  * @param Xi_DFT1            DFT of the second signal.
+  * @param Xo_PhCor           DFT of input signals' phase correlation.
+  * @param Xi_Xi_width        for 1D/2D: size/width of the signals.
+  * @param Xi_Xi_height       fill if 2D signals: height of the signals. */
+  void UnitPhaseCorrelation(std::complex<float>* Xi_DFT0, std::complex<float>* Xi_DFT1, std::complex<float>* Xo_PhCor, unsigned int Xi_width, unsigned int Xi_height = 1);
+
 
 } // namespace tpcl
 

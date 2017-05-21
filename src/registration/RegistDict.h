@@ -18,8 +18,6 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
-
-// File Location: l:\SLDR\sldrcr\sldrcr_sp.h
 /******************************************************************************
 *
 *: Package Name: sldrcr_sp
@@ -31,9 +29,8 @@
 #ifndef __tpcl_register_dict_H
 #define __tpcl_register_dict_H
 
-/******************************************************************************
-*                                   IMPORTED                                  *
-******************************************************************************/
+
+#include "../include/registration.h"
 
 
   /******************************************************************************
@@ -45,7 +42,6 @@
 namespace tpcl
 {
   class  CRegDictionary;         // registration Dictionary
-
 
 
   /******************************************************************************
@@ -61,7 +57,7 @@ namespace tpcl
   *
   ******************************************************************************/
 
-  class DLL_Entry CCoarseRegister
+  class CCoarseRegister : public IRegister
   {
   public:
     /******************************************************************************
@@ -97,7 +93,7 @@ namespace tpcl
     * @param Xi_estimatedOrient   estimation of registration location (only uses location vector). if NULL then compare to all dictionary's entries.
     * return                      registration's score (ICP based) - the lower the better.
     * !!!!currently not supporting unordered point cloud!!!! */
-    float SecondaryPointCloudRegistration(CMat4& Xo_registration, CVec3* Xi_pts, int Xi_numPts, int Xi_lineWidth = -1, CMat4* Xi_estimatedOrient = NULL);
+    float SecondaryPointCloudRegistration(CMat4& Xo_registration, CVec3* Xi_pts, int Xi_numPts, int Xi_lineWidth = -1, CMat4* Xi_estimatedOrient = 0);
 
 
 
@@ -137,3 +133,4 @@ namespace tpcl
 
 } // namespace SLDR
 
+#endif

@@ -29,6 +29,8 @@
 #ifndef __tpcl_orient_dict_H
 #define __tpcl_orient_dict_H
 
+#include "../../include/vec.h"
+
 /******************************************************************************
 *                                   IMPORTED                                  *
 ******************************************************************************/
@@ -39,6 +41,11 @@
   ******************************************************************************/
   struct CVec3;
   struct CMat4;
+
+  namespace std
+  {
+    template<class _Ty> class complex;
+  }
 
 namespace tpcl
 {
@@ -149,9 +156,7 @@ namespace tpcl
   };
 
 
-
-
-
+  
   /******************************************************************************
   *
   *: Class name: SLDR_RDI_CRegDictionary
@@ -162,7 +167,7 @@ namespace tpcl
   *
   ******************************************************************************/
 
-  class DLL_Entry CRegDictionary : public COrientedGrid
+  class CRegDictionary : public COrientedGrid
   {
   public:
     /******************************************************************************
@@ -274,5 +279,8 @@ namespace tpcl
 
 
 
+
+
 } // namespace tpcl
 
+#endif

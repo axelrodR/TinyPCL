@@ -113,7 +113,7 @@ namespace tpcl
     * @param Xi_pts                      input xyz image. assuming row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
     * @param Xo_ptsDenoised              denoised point cloud. assumes size at least as Xi_pts size.
     * @return                            size of point cloud.  */
-    static int DenoiseRangeOfPointCloud(float Xi_res, int Xi_medFiltSize0, int Xi_medFiltSize1, float Xi_distFromMedianThresh, int Xi_numPts, CVec3* Xi_pts, D3DXVECTOR3* Xo_ptsDenoised);
+    static int DenoiseRangeOfPointCloud(float Xi_res, int Xi_medFiltSize0, int Xi_medFiltSize1, float Xi_distFromMedianThresh, int Xi_numPts, CVec3* Xi_pts, CVec3* Xo_ptsDenoised);
 
 
     /** downsample a point cloud. Divides to grid from minXYZ (of pts) to max XYZ, of size m_voxelSize.

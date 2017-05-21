@@ -61,22 +61,22 @@ namespace tpcl
   *
   ******************************************************************************/
 
-  class CCoarseRegister
+  class IRegister
   {
   public:
     /******************************************************************************
     *                               Public methods                                *
     ******************************************************************************/
     /** Constructor */
-    CCoarseRegister();
+    IRegister();
 
     /** destructor */
-    virtual ~CCoarseRegister();
+    virtual ~IRegister();
 
 
     /** Build dictionary from global point cloud. Xi_pts IS being altered.
     * @param Xi_pts           point cloud */
-    void BuildDictionary(int Xi_numPts, const CVec3* Xi_pts);
+    virtual void BuildDictionary(int Xi_numPts, const CVec3* Xi_pts);
 
 
     /** Create and get list of registration matches for a local point cloud
@@ -90,7 +90,7 @@ namespace tpcl
     * @param Xi_numlines          if it's an order point cloud then this is the height of the local point cloud.    
     * @param Xi_GPS               GPS estimation of registration location, if NULL then no estimation.
     * @return                     number of candidates.*/
-    int GetLocalRegistrationCandidates(int Xi_maxCandidates, CVec3* Xi_pts, CVec3 Xi_originApprox, int* Xo_candidates, float* Xo_grades, CMat4* Xo_rotations, int Xi_numPts, int Xi_numlines = -1, CVec3* Xi_GPS = NULL);
+    virtual int GetLocalRegistrationCandidates(int Xi_maxCandidates, CVec3* Xi_pts, CVec3 Xi_originApprox, int* Xo_candidates, float* Xo_grades, CMat4* Xo_rotations, int Xi_numPts, int Xi_numlines = -1, CVec3* Xi_GPS = NULL);
 
 
     /** Get best registration match from created candidates list.
@@ -99,7 +99,7 @@ namespace tpcl
     * @param Xi_grades            list of the candidates grades.
     * @param Xi_rotations         list of the candidates rotation.
     * @param Xo_best              best registration from candidates */
-    void GetLocalRegistration(int Xi_NumOfCandidates, int* Xi_candidates, float* Xi_grades, CMat4* Xi_rotations, CMat4& Xo_best);
+    virtual void GetLocalRegistration(int Xi_NumOfCandidates, int* Xi_candidates, float* Xi_grades, CMat4* Xi_rotations, CMat4& Xo_best);
 
 
 

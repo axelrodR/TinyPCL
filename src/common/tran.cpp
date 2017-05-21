@@ -31,7 +31,9 @@
 namespace tpcl
 {
 
-  //   Inplace version of rearrange function
+  /** Inplace version of rearrange function for the butterfly rearrangement of 1D FFT.
+  * @param Xio_data           both input data and output.
+  * @param Xi_size            length of both input data and result. */
   void Rearrange(std::complex<float>* Xio_data, unsigned int Xi_size)
   {
     //   Swap position
@@ -60,10 +62,13 @@ namespace tpcl
 
 
   //   FFT implementation
+  /** 1D FFT implementation for the already butterfly rearranged input signal.
+  * @param Xio_data           both input data and output.
+  * @param Xi_size            length of both input data and result. */
   void Perform(std::complex<float>* Xio_data, unsigned int Xi_size,
-    bool Inverse  = false )
+    bool Xi_forward = true )
   {
-    double pi = Inverse ? 3.14159265358979323846 : -3.14159265358979323846;
+    double pi = Xi_forward ? -3.14159265358979323846 : 3.14159265358979323846;
     //   Iteration through dyads, quadruples, octads and so on...
     for (unsigned int Step = 1; Step < Xi_size; Step <<= 1)
     {
@@ -96,6 +101,16 @@ namespace tpcl
         Factor = Multiplier * Factor + Factor;
       }
     }
+
+    if (!Xi_forward)
+    {
+      //scale:
+      float invSize = 1 / float(Xi_size);
+      for (unsigned int index = 0; index < Xi_size; index++)
+      {
+        Xio_data[index] *= invSize;
+      }
+    }
   }
 
   bool DFT(unsigned int Xi_size, std::complex<float> *Xio_data, bool Xi_forward)
@@ -126,7 +141,7 @@ namespace tpcl
     }
 
 
-  std::complex<float>*DFTcols = new std::complex<float>[Xi_height];
+  std::complex<float>* DFTcols = new std::complex<float>[Xi_height];
   for (unsigned int col = 0; col < Xi_width; col++)
   {
     for (unsigned int row = 0; row < Xi_height; row++)
@@ -134,7 +149,7 @@ namespace tpcl
       DFTcols[row] = Xio_data[(row * Xi_width) + col];
     }
 
-    if ((!DFT(Xi_width, DFTcols, Xi_forward)))
+    if ((!DFT(Xi_height, DFTcols, Xi_forward)))
     {
       delete[] DFTcols;
       return false;
@@ -152,5 +167,69 @@ namespace tpcl
   return true;
   }
 
-} // namespace tpcl
+
+  void DFTshift0ToOrigin(std::complex<float> *Xio_data, unsigned int Xi_size)
+  {
+    unsigned  int index0 = 0;
+    unsigned int index1 = Xi_size >> 1;
+
+    for (index0; index0 < (Xi_size >> 1); index0++, index1++)
+    {
+      std::swap(Xio_data[index0], Xio_data[index1]);
+    }
+  }
+
+  void DFTshift0ToOrigin(std::complex<float> *Xio_data, unsigned int Xi_width, unsigned int Xi_height)
+  {
+    unsigned int stepH = Xi_height >> 1;
+    unsigned int stepW = Xi_width >> 1;
+    for (unsigned int row = 0; row < stepH; row++)
+    {
+        unsigned int index1Q = (row * Xi_width);
+        unsigned int index2Q = index1Q + stepW;
+        unsigned int index3Q = ((row + stepH) * Xi_width);
+        unsigned int index4Q = index3Q + stepW;
+        unsigned int stopAt = index2Q;
+
+      for (index1Q; index1Q < stopAt; index1Q++, index2Q++, index3Q++, index4Q++)
+      {
+        std::swap(Xio_data[index1Q], Xio_data[index4Q]);
+        std::swap(Xio_data[index2Q], Xio_data[index3Q]);
+      }
+    }
+  }
+
+
+  void PhaseCorrelation(std::complex<float>* Xi_DFT0, std::complex<float>* Xi_DFT1, std::complex<float>* Xo_PhCor, unsigned int Xi_width, unsigned int Xi_height)
+  {
+    std::complex<float> zeroComplex = 0;
+    for (unsigned int index2 = 0; index2 < Xi_height; index2++)
+    {
+      for (unsigned int index1 = 0; index1 < Xi_width; index1++)
+      {
+        unsigned int index = (index2 * Xi_width) + index1;
+
+        Xo_PhCor[index] = Xi_DFT0[index] * conj(Xi_DFT1[index]);
+      }
+    }
+  }
+
+  void UnitPhaseCorrelation(std::complex<float>* Xi_DFT0, std::complex<float>* Xi_DFT1, std::complex<float>* Xo_PhCor, unsigned int Xi_width, unsigned int Xi_height)
+  {
+    std::complex<float> zeroComplex = 0;
+    for (unsigned int index2 = 0; index2 < Xi_height; index2++)
+    {
+      for (unsigned int index1 = 0; index1 < Xi_width; index1++)
+      {
+        unsigned int index = (index2 * Xi_width) + index1;
+
+        Xo_PhCor[index] = Xi_DFT0[index] * conj(Xi_DFT1[index]);
+        if (Xo_PhCor[index] != zeroComplex)
+          Xo_PhCor[index] /= std::abs(Xo_PhCor[index]);
+      }
+    }
+  }
+
+
+} // namespace IfrMath
 

@@ -1,5 +1,3 @@
-// File Location: S:\gen\gengmtrx\gengmtrx_grid.h
-
 //
 // Copyright (c) 2016-2017 Geosim Ltd.
 // 
@@ -25,12 +23,11 @@
 *: Package Name: features
 *
 ******************************************************************************/
-//#include <D3dx9core.h> // uncommenet if using DirectX
-//#include <ifr/ifrgen/ifrgen_stnd.h>
 #include "features.h"
-////#include <gen/gengmtrx/gengmtrx_spat.h>
+#include "SpatialHash.h"
+#include <algorithm>
 #include "plane.h"
-//#include <vector>
+#include <vector>
 
 
 
@@ -220,7 +217,7 @@ namespace tpcl
   *: Method name: FillPointCloud
   *
   ******************************************************************************/
-  void Features::FillPointCloud(int Xi_numPts, const CVec3* Xi_pts, int Xo_numPts, const CVec3* Xo_pts)
+  void Features::FillPointCloud(int /*Xi_numPts*/, const CVec3* /*Xi_pts*/, int /*Xo_numPts*/, const CVec3* /*Xo_pts*/)
   {
   }
 
@@ -230,7 +227,7 @@ namespace tpcl
   *: Method name: FindNormal
   *
   ******************************************************************************/
-  void Features::FindNormal(int Xi_numPts, CVec3* Xio_pts, CVec3* Xo_Normals, float Xi_radius, GenGmtrx::CSpatialHash2D* Xi_globalHashed, bool Xi_fixZ)
+  void Features::FindNormal(int Xi_numPts, CVec3* Xio_pts, CVec3* Xo_Normals, float Xi_radius, CSpatialHash2D* Xi_globalHashed, bool Xi_fixZ)
   {
     const int bufSize = 100;
     bool gotHashed = Xi_globalHashed != NULL;
@@ -238,7 +235,7 @@ namespace tpcl
     //if didn't get global hashed point cloud - create one from the point cloud for whoch the normals are found:
     if (!gotHashed)
     {
-      Xi_globalHashed = new GenGmtrx::CSpatialHash2D;
+      Xi_globalHashed = new CSpatialHash2D;
       for (int Index = 0; Index < Xi_numPts; Index++)
       {
         Xi_globalHashed->Add(Xio_pts[Index], NULL);
@@ -260,7 +257,7 @@ namespace tpcl
         numOfClose = Xi_globalHashed->GetNear(Xio_pts[ptIndex], bufSize, unsuedBuf, closePts, radius);
 
       //find plane:
-        GenGmtrx::CPlane approxPlane;
+        CPlane approxPlane;
         if (approxPlane.RanSaC(numOfClose, closePts, 1.0f) == 0)
           Xo_Normals[ptIndex] = CVec3(0, 0, 1); //TODO: desice what to do if not enoguh points.
         else
@@ -294,7 +291,6 @@ namespace tpcl
   ******************************************************************************/
   int Features::DenoiseRangeOfOrderedPointCloud(int Xi_lineWidth, int Xi_numlines, int Xi_medFiltSize0, int Xi_medFiltSize1, float Xi_distFromMedianThresh, CVec3* Xi_pts, CVec3* Xo_ptsDenoised)
   {
-    PROFILE("DenoiseRangeOfOrderedPointCloud");
     int totalSize = Xi_lineWidth * Xi_numlines;
 
     //convert to range image (each pixle in ptsLocal has it's xyz).
@@ -353,9 +349,8 @@ namespace tpcl
   *: Method name: DenoiseRangeOfPointCloud
   *
   ******************************************************************************/
-  int Features::DenoiseRangeOfPointCloud(float Xi_res, int Xi_medFiltSize0, int Xi_medFiltSize1, float Xi_distFromMedianThresh, int Xi_numPts, CVec3* Xi_pts, CVec3* Xo_ptsDenoised)
+  int Features::DenoiseRangeOfPointCloud(float /*Xi_res*/, int /*Xi_medFiltSize0*/, int /*Xi_medFiltSize1*/, float /*Xi_distFromMedianThresh*/, int Xi_numPts, CVec3* Xi_pts, CVec3* Xo_ptsDenoised)
   {
-    PROFILE("DenoiseRangeOfPointCloud");
     //temp: input = outpout
     for (int index = 0; index < Xi_numPts; index++)
       Xo_ptsDenoised[index] = Xi_pts[index];
@@ -371,7 +366,6 @@ namespace tpcl
   ******************************************************************************/
   void Features::DownSamplePointCloud(float Xi_voxelSize, int Xi_numPts, const CVec3* Xi_pts, int& Xo_numPts, CVec3* Xo_pts)
   {
-    PROFILE("DownSamplePointCloud");
     float InvVoxelSize = 1.0f / Xi_voxelSize;
 
     //find min/max x/y/z:
@@ -421,7 +415,7 @@ namespace tpcl
 
 
     //save selected points:
-    for (int VecIndex = 0; VecIndex < DownSampledPts.size(); VecIndex++)
+    for (int VecIndex = 0; VecIndex < (int)DownSampledPts.size(); VecIndex++)
     {
       Xo_pts[VecIndex] = DownSampledPts[VecIndex];
     }
@@ -436,12 +430,11 @@ namespace tpcl
   *: Method name: RMSEofRegistration
   *
   ******************************************************************************/
-  float Features::RMSEofRegistration(float hashRes, GenGmtrx::CSpatialHash2D* Xi_pcl1, int Xi_pcl2size, CVec3* Xi_pcl2, CMat4& Xi_Rt)
+  float Features::RMSEofRegistration(float hashRes, CSpatialHash2D* Xi_pcl1, int Xi_pcl2size, CVec3* Xi_pcl2, CMat4& Xi_Rt)
   {
-    PROFILE("RMSEofRegistration");
     double RMSE = 0;
     float max2DRadius = hashRes * 2;
-    float outPenalty = max2DRadius*max2DRadius*1.5;
+    float outPenalty = max2DRadius*max2DRadius*1.5f;
 
     // extract matrix and translation vector
     double r00 = Xi_Rt.m[0][0]; double r01 = Xi_Rt.m[0][1]; double r02 = Xi_Rt.m[0][2];
@@ -456,9 +449,9 @@ namespace tpcl
 
       // transform point according to R|t
       CVec3 Pos = Xi_pcl2[i];
-      query.x = r00*Pos.x + r01*Pos.y + r02*Pos.z + t0;
-      query.y = r10*Pos.x + r11*Pos.y + r12*Pos.z + t1;
-      query.z = r20*Pos.x + r21*Pos.y + r22*Pos.z + t2;
+      query.x = float(r00*Pos.x + r01*Pos.y + r02*Pos.z + t0);
+      query.y = float(r10*Pos.x + r11*Pos.y + r12*Pos.z + t1);
+      query.z = float(r20*Pos.x + r21*Pos.y + r22*Pos.z + t2);
       // search for match
       float dist = outPenalty;
       if (Xi_pcl1->FindNearest(query, &result, max2DRadius))
@@ -470,7 +463,7 @@ namespace tpcl
     }
     
     RMSE /= Xi_pcl2size;
-    return sqrt(RMSE);
+    return float(sqrt(RMSE));
   }
 
 
