@@ -1,9 +1,11 @@
-// File Location: 
-
 //
 // Copyright (c) 2016-2017 Geosim Ltd.
-// 
+// FFT transform is a copyright of LIBROW (see details there)
+// FFT2D transform is a copyright of Paul Burke
+//
 // Written by Amit Henig
+//
+// Functions within written by other people are credited with
 //
 // This software is provided 'as-is', without any express or implied
 // warranty.  In no event will the authors be held liable for any damages
@@ -113,6 +115,11 @@ namespace tpcl
     }
   }
 
+
+  //   The FFT code is based on FFT code from LIBROW:
+  //   see: http://www.librow.com/articles/article-10
+  //   You can use it on your own
+  //   When utilizing credit LIBROW site
   bool DFT(unsigned int Xi_size, std::complex<float> *Xio_data, bool Xi_forward)
   {
     //   Check input parameters
@@ -127,7 +134,7 @@ namespace tpcl
   }
 
 
-
+  //        The FFT2D is based on http://paulbourke.net/miscellaneous/dft/
   bool DFT2D(unsigned int Xi_width, unsigned int Xi_height, std::complex<float> *Xio_data, bool Xi_forward)
   {
     //   Check input parameters
