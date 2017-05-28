@@ -29,12 +29,14 @@
 #ifndef __tpcl_orient_dict_H
 #define __tpcl_orient_dict_H
 
-#include "../../include/vec.h"
+
 
 /******************************************************************************
 *                                   IMPORTED                                  *
 ******************************************************************************/
 
+#include "../../include/vec.h"
+#include "pcl.h"
 
   /******************************************************************************
   *                        INCOMPLETE CLASS DECLARATIONS                        *
@@ -86,7 +88,7 @@ namespace tpcl
     /** Get pointer to the main point cloud.
     * @param Xo_ptsMain   pointer to the main point cloud.
     * @return               size of the main point cloud. */
-    int getPtsMainPtr(CVec3* &Xo_ptsMain);
+    void getPclMainPtr(CPtCloud* &Xo_pclMain);
 
     /** Get pointer to the grid (location and normal orientation per grid point).
     * @param Xo_ptsMain   pointer to the grid.
@@ -109,10 +111,10 @@ namespace tpcl
     void DeleteAndSetVoxelSize(float Xi_voxelSize);
 
     /** saves the input point cloud, adds it to the hashed main cloud and finds bounding box.
-    * @param Xi_pts           input point cloud.
+    * @param Xi_pcl           input point cloud.
     * @param Xo_minBox        minimum of the PC's bounding box.
     * @param Xo_maxBox        maximum of the PC's bounding box. */
-    void PointCloudUpdate(int Xi_numPts, const CVec3* Xi_pts, CVec3& Xo_minBox, CVec3& Xo_maxBox);
+    void PointCloudUpdate(const CPtCloud& Xi_pcl, CVec3& Xo_minBox, CVec3& Xo_maxBox);
 
     /** adds grid points (location and normal to ground for that location according to the main cloud) to the grid.
     *   the 2D location of grid points added is derived only from the bouding box and the distance set between the grid points.
@@ -131,16 +133,16 @@ namespace tpcl
     * @param Xi_d_grid        1D distance between (the 2D) grid's points.
     * @param Xi_d_sensor      final location of the grid points is set to be Xi_d_sensor above ground detected from the main cloud. 
     * return                  the previous size of the grid. */
-    int PointCloudAndGridUpdate(int Xi_numPts, const CVec3* Xi_pts, float Xi_d_grid, float Xi_d_sensor);
+    int PointCloudAndGridUpdate(const CPtCloud& Xi_pcl, float Xi_d_grid, float Xi_d_sensor);
 
   protected:
     /******************************************************************************
     *                             Protected members                               *
     ******************************************************************************/
-    int m_size;                 ///< number of entries (grid points) in the grid.
-    CVec3* m_ptsMain;     ///< main point cloud.
-    int m_numPtsMain;           ///< size of the main point cloud.
+    CPtCloud m_pclMain;       ///< main point cloud.
     void* m_mainHashed;         ///< a hashed copy of the original point cloud.
+
+    int m_size;                 ///< number of entries (grid points) in the grid.
     float m_voxelSize;          ///< the voxel size parameter of the hashed main point cloud.
     CMat4* m_Orient;       ///< location and normal orientation per grid point (created from the main point cloud).
     CVec3 m_minBBox;        ///< minimum of boounding box of accumulated main point cloud.
@@ -156,7 +158,9 @@ namespace tpcl
   };
 
 
-  
+
+
+
   /******************************************************************************
   *
   *: Class name: SLDR_RDI_CRegDictionary
@@ -164,6 +168,8 @@ namespace tpcl
   *: Abstract: Dictionary who's entries represents a 2D grid, each has it's location, normal according to a main point cloud, 
   *            a range image descriptor as seen from the entry's location&orientation and its corresponding DFT.
   *            the main cloud is the union of all point cloud added to the dictinary from last dictionary reset.
+  *            Derived from the thesis of David Avidar (Malaach's group)
+  *            see: <FILL PAPER REF HERE>
   *
   ******************************************************************************/
 
@@ -210,16 +216,16 @@ namespace tpcl
     *   updates grid points (location and normal to ground for that location according to the main cloud) to the dictionary's grid (entries).
     *   the 2D location of grid points added is derived only from the bouding box of the input PC and the distance set between the grid points.
     *   rest of dictionary's entries' parameters are calculated first time they are needed.
-    * @param Xi_pts           input point cloud.
+    * @param Xi_pcl           input point cloud.
     * @param Xi_d_grid        1D distance between (the 2D) grid's points.
     * @param Xi_d_sensor      final location of the grid points is set to be Xi_d_sensor above ground detected from the main cloud. */
-    void DictionaryUpdate(int Xi_numPts, const CVec3* Xi_pts, float Xi_d_grid, float Xi_d_sensor);
+    void DictionaryUpdate(const CPtCloud& Xi_pcl, float Xi_d_grid, float Xi_d_sensor);
 
 
     /** Convert a point cloud into the entry's descriptor - range image, a polar map of distance around the entry's grid point.
-    * @param Xi_pts            point cloud.
+    * @param Xi_pcl          point cloud.
     * @param Xo_RangeImage   polar depth map. */
-    void PCL2descriptor(int Xi_numPts, const CVec3* Xi_pts, float* Xo_RangeImage);
+    void PCL2descriptor(const CPtCloud& Xi_pcl, float* Xo_RangeImage);
 
 
     /** find DFT of a 2D descriptor.

@@ -25,24 +25,18 @@
 *
 ******************************************************************************/
 #include "OrientDict.h"
-#include "SpatialHash.h"
 #include "features.h"
+#include "SpatialHash.h"
 #include "common.h"
 #include "tran.h"
 #include <complex>
 #include <vector>
-#include "../../include/vec.h"
 
 
 //#define DEBUG_LOCAL_RANGE_IMAGE
 #ifdef DEBUG_LOCAL_RANGE_IMAGE
 #include "dbg.h"
 #endif
-
-//#ifdef _DEBUG
-//#define new DEBUG_NEW
-//#endif
-
 
 
 namespace tpcl
@@ -111,12 +105,14 @@ namespace tpcl
   ******************************************************************************/
   COrientedGrid::COrientedGrid()
   {
+    m_pclMain.m_color = NULL;    m_pclMain.m_normal = NULL;    m_pclMain.m_type = PCL_TYPE_FUSED;
     initMembers();
   }
 
 
   COrientedGrid::COrientedGrid(float Xi_voxelSize)
   {
+    m_pclMain.m_color = NULL;    m_pclMain.m_normal = NULL;    m_pclMain.m_type = PCL_TYPE_FUSED;
     initMembers();
     m_voxelSize = Xi_voxelSize;
     m_mainHashed = new CSpatialHash2D(m_voxelSize);
@@ -163,10 +159,9 @@ namespace tpcl
   *: Method name: getPtsMainPtr
   *
   ******************************************************************************/
-  int COrientedGrid::getPtsMainPtr(CVec3* &Xo_ptsMain)
+  void COrientedGrid::getPclMainPtr(CPtCloud* &Xo_pclMain)
   {
-    Xo_ptsMain = m_ptsMain;
-    return m_numPtsMain;
+    Xo_pclMain = &m_pclMain;
   }
 
   /******************************************************************************
@@ -202,7 +197,7 @@ namespace tpcl
   void COrientedGrid::DeleteGrid()
   {
     delete m_mainHashed;
-    delete[] m_ptsMain;
+    delete[] m_pclMain.m_pos;
     delete[] m_Orient;
   }
 
@@ -219,10 +214,10 @@ namespace tpcl
     m_mainHashed = new CSpatialHash2D(m_voxelSize);
     ((CSpatialHash2D*)(m_mainHashed))->Clear();
 
-    m_ptsMain = NULL;
+    m_pclMain.m_pos = NULL;
     m_Orient = NULL;
 
-    m_numPtsMain = 0;
+    m_pclMain.m_numPts = 0;
     m_size = 0;
     m_minBBox = CVec3(0, 0, 0);
     m_maxBBox = CVec3(0, 0, 0);
@@ -248,24 +243,24 @@ namespace tpcl
   *: Method name: PointCloudUpdate
   *
   ******************************************************************************/
-  void COrientedGrid::PointCloudUpdate(int Xi_numPts, const CVec3* Xi_pts, CVec3& Xo_minBox, CVec3& Xo_maxBox)
+  void COrientedGrid::PointCloudUpdate(const CPtCloud& Xi_pcl, CVec3& Xo_minBox, CVec3& Xo_maxBox)
   {
     CSpatialHash2D& mainHashed = *((CSpatialHash2D*)(m_mainHashed));
 
-    int totalPts = m_numPtsMain + Xi_numPts;
-    resizeArray(m_ptsMain, m_numPtsMain, totalPts);
+    int totalPts = m_pclMain.m_numPts + Xi_pcl.m_numPts;
+    resizeArray(m_pclMain.m_pos, m_pclMain.m_numPts, totalPts);
 
-    Xo_minBox = Xo_maxBox = Xi_pts[0];
-    for (int ptrIndex = 0; ptrIndex < Xi_numPts; ptrIndex++)
+    Xo_minBox = Xo_maxBox = Xi_pcl.m_pos[0];
+    for (int ptrIndex = 0; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
     {
-      m_ptsMain[m_numPtsMain] = Xi_pts[ptrIndex];
-      m_numPtsMain++;
+      m_pclMain.m_pos[m_pclMain.m_numPts] = Xi_pcl.m_pos[ptrIndex];
+      m_pclMain.m_numPts++;
 
-      mainHashed.Add(Xi_pts[ptrIndex], (void*)(1));
-      Xo_minBox = Min_ps(Xo_minBox, Xi_pts[ptrIndex]);
-      Xo_maxBox = Max_ps(Xo_maxBox, Xi_pts[ptrIndex]);
+      mainHashed.Add(Xi_pcl.m_pos[ptrIndex], (void*)(1));
+      Xo_minBox = Min_ps(Xo_minBox, Xi_pcl.m_pos[ptrIndex]);
+      Xo_maxBox = Max_ps(Xo_maxBox, Xi_pcl.m_pos[ptrIndex]);
     }
-    //at end of for loop: m_numPtsMain = totalPts;
+    //at end of for loop: m_pclMain.m_numPts = totalPts;
 
     m_minBBox = Min_ps(Xo_minBox, m_minBBox);;
     m_maxBBox = Max_ps(Xo_maxBox, m_maxBBox);;
@@ -288,9 +283,11 @@ namespace tpcl
     //create grid's locations (taking z value from the closest point):
     int GridWidth = int(ceil((Xi_maxBox.x - Xi_minBox.x) * invGridRes));
     int GridHeight = int(ceil((Xi_maxBox.y - Xi_minBox.y) * invGridRes));
-    int totalGridPoint = GridHeight*GridWidth;
 
-    CVec3* gridPositions = new CVec3[totalGridPoint];
+    CPtCloud gridPositions;  gridPositions.m_type = PCL_TYPE_FUSED;   gridPositions.m_color - NULL;
+    gridPositions.m_numPts = GridHeight*GridWidth;
+    gridPositions.m_pos = new CVec3[gridPositions.m_numPts];
+    gridPositions.m_normal = new CVec3[gridPositions.m_numPts];
 
     #pragma omp parallel for
     for (int yGrid = 0; yGrid < GridHeight; yGrid++)
@@ -303,46 +300,44 @@ namespace tpcl
           pos.z = closest.z;
         else
           pos.z = Xi_minBox.z;
-        gridPositions[yGrid*GridWidth + xGrid] = pos;
+        gridPositions.m_pos[yGrid*GridWidth + xGrid] = pos;
       }
     }
 
     //find normals:
     const float maxDistForPlane = m_voxelSize * 2;
-    CVec3* Normals = new CVec3[totalGridPoint];
-    //TODO:      Features::FillPointCloud() \ outside source for ground?;
-    Features::FindNormal(totalGridPoint, gridPositions, Normals, maxDistForPlane, &mainHashed, true);
+    Features::FindNormal(gridPositions, maxDistForPlane, &mainHashed, true);
 
     int preSize = m_size;
-    m_size += totalGridPoint;
+    m_size += gridPositions.m_numPts;
     resizeArray(m_Orient, preSize, m_size);
 
     //creating final grid's transformation matrix:
-#pragma omp parallel for //private(xGrid) collapse(2)
-    for (int index = 0; index < totalGridPoint; index++)
+    #pragma omp parallel for //private(xGrid) collapse(2)
+    for (int index = 0; index < gridPositions.m_numPts; index++)
     {
       //set viewpoints height above ground (in the normal vector direction above the plane that was found):
-      gridPositions[index] = gridPositions[index] + (Xi_d_sensor * Normals[index]);
+      gridPositions.m_pos[index] = gridPositions.m_pos[index] + (Xi_d_sensor * gridPositions.m_normal[index]);
 
       //find refFrame matrix:
-      //zVec = Normals[index]
+      //zVec = gridPositions.m_normal[index]
       CVec3 xVec(1, 0, 0);
-      xVec = xVec - DotProd(xVec, Normals[index])*Normals[index];
+      xVec = xVec - DotProd(xVec, gridPositions.m_normal[index])*gridPositions.m_normal[index];
       Normalize(xVec);
-      CVec3 yVec = CrossProd(Normals[index], xVec);
+      CVec3 yVec = CrossProd(gridPositions.m_normal[index], xVec);
       Normalize(yVec);
 
       //update transformation matrix:
-      float OrientVals[] = { xVec.x, yVec.x, Normals[index].x, 0.0f,
-        xVec.y, yVec.y, Normals[index].y, 0.0f,
-        xVec.z, yVec.z, Normals[index].z, 0.0f,
-        gridPositions[index].x, gridPositions[index].y, gridPositions[index].z, 1.0f };
+      float OrientVals[] = { xVec.x, yVec.x, gridPositions.m_normal[index].x, 0.0f,
+                             xVec.y, yVec.y, gridPositions.m_normal[index].y, 0.0f,
+                             xVec.z, yVec.z, gridPositions.m_normal[index].z, 0.0f,
+                             gridPositions.m_pos[index].x, gridPositions.m_pos[index].y, gridPositions.m_pos[index].z, 1.0f };
       m_Orient[preSize + index] = CMat4(OrientVals);
     }
 
     //release memory:
-    delete[] gridPositions;
-    delete[] Normals;
+    delete[] gridPositions.m_pos;
+    delete[] gridPositions.m_normal;
 
     return preSize;
   }
@@ -354,11 +349,11 @@ namespace tpcl
   *: Method name: PointCloudAndGridUpdate
   *
   ******************************************************************************/
-  int COrientedGrid::PointCloudAndGridUpdate(int Xi_numPts, const CVec3* Xi_pts, float Xi_d_grid, float Xi_d_sensor)
+  int COrientedGrid::PointCloudAndGridUpdate(const CPtCloud& Xi_pcl, float Xi_d_grid, float Xi_d_sensor)
   {
     CVec3 minBox, maxBox;
 
-    PointCloudUpdate(Xi_numPts, Xi_pts, minBox, maxBox);
+    PointCloudUpdate(Xi_pcl, minBox, maxBox);
 
     return ViewpointGridUpdate(Xi_d_grid, Xi_d_sensor, minBox, maxBox);
   }
@@ -370,8 +365,8 @@ namespace tpcl
   ******************************************************************************/
   void COrientedGrid::initMembers()
   {
-    m_numPtsMain = 0;
-    m_ptsMain = NULL;
+    m_pclMain.m_numPts = 0;
+    m_pclMain.m_pos = NULL;
     m_voxelSize = 0.5;
     m_Orient = NULL;
     m_size = 0;
@@ -558,9 +553,9 @@ namespace tpcl
   *: Method name: DictionaryUpdate
   *
   ******************************************************************************/
-  void CRegDictionary::DictionaryUpdate(int Xi_numPts, const CVec3* Xi_pts, float Xi_d_grid, float Xi_d_sensor)
+  void CRegDictionary::DictionaryUpdate(const CPtCloud& Xi_pcl, float Xi_d_grid, float Xi_d_sensor)
   {
-    int preSize = PointCloudAndGridUpdate(Xi_numPts, Xi_pts, Xi_d_grid, Xi_d_sensor);
+    int preSize = PointCloudAndGridUpdate(Xi_pcl, Xi_d_grid, Xi_d_sensor);
 
     //create vectors for the descriptors:
     resizeArray(m_descriptors, preSize, m_size);
@@ -575,7 +570,7 @@ namespace tpcl
   *: Method name: PCL2descriptor
   *
   ******************************************************************************/
-  void CRegDictionary::PCL2descriptor(int Xi_numPts, const CVec3* Xi_pts, float* Xo_RangeImage)
+  void CRegDictionary::PCL2descriptor(const CPtCloud& Xi_pcl, float* Xo_RangeImage)
   {
     int totalDescSize = m_descHeight * m_descWidth;
     float azimuthRes = m_descWidth / (2.0f * float(M_PI));
@@ -586,11 +581,11 @@ namespace tpcl
     bool checkMax = !(m_r_max == -1);
 
     //put closest range per azimuth & elevation in the range image.
-    for (int i = 0; i < Xi_numPts; i++)
+    for (int i = 0; i < Xi_pcl.m_numPts; i++)
     {
-      float x = Xi_pts[i].x;
-      float y = Xi_pts[i].y;
-      float z = Xi_pts[i].z;
+      float x = Xi_pcl.m_pos[i].x;
+      float y = Xi_pcl.m_pos[i].y;
+      float z = Xi_pcl.m_pos[i].z;
       float azimuth = atan2(y, x);
       float elevation = atan2(z, sqrt(x*x + y*y));
       float r = sqrt(x*x + y*y + z*z);
@@ -644,22 +639,23 @@ namespace tpcl
   {
     if (m_descriptors[Xi_entryIndex] == NULL)
     {
-      CVec3* ptsTran = new CVec3[m_numPtsMain];
+      CPtCloud ptsTran; ptsTran.m_numPts = m_pclMain.m_numPts;
+      ptsTran.m_pos = new CVec3[m_pclMain.m_numPts];
       CMat4 orients = m_Orient[Xi_entryIndex];
       CVec3 Pos = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
 
       //transform main point cloud to grid point's orientation:
       #pragma omp parallel for
-      for (int Index = 0; Index < m_numPtsMain; Index++)
+      for (int Index = 0; Index < m_pclMain.m_numPts; Index++)
       {
         //transform point:
-        CVec3 PosShifted = m_ptsMain[Index] - Pos;
+        CVec3 PosShifted = m_pclMain.m_pos[Index] - Pos;
         CVec3 MatRow0 = CVec3(orients.m[0][0], orients.m[0][1], orients.m[0][2]);
         CVec3 MatRow1 = CVec3(orients.m[1][0], orients.m[1][1], orients.m[1][2]);
         CVec3 MatRow2 = CVec3(orients.m[2][0], orients.m[2][1], orients.m[2][2]);
-        ptsTran[Index].x = DotProd(PosShifted, MatRow0);
-        ptsTran[Index].y = DotProd(PosShifted, MatRow1);
-        ptsTran[Index].z = DotProd(PosShifted, MatRow2);
+        ptsTran.m_pos[Index].x = DotProd(PosShifted, MatRow0);
+        ptsTran.m_pos[Index].y = DotProd(PosShifted, MatRow1);
+        ptsTran.m_pos[Index].z = DotProd(PosShifted, MatRow2);
       }
 
 
@@ -667,12 +663,12 @@ namespace tpcl
       int totalDescSize = m_descHeight * m_descWidth;
 
       m_descriptors[Xi_entryIndex] = new float[totalDescSize];
-      PCL2descriptor(m_numPtsMain, ptsTran, m_descriptors[Xi_entryIndex]);
+      PCL2descriptor(ptsTran, m_descriptors[Xi_entryIndex]);
 
       m_descriptorsDFT[Xi_entryIndex] = new std::complex<float>[totalDescSize];
       Descriptor2DFT(m_descriptors[Xi_entryIndex], m_descriptorsDFT[Xi_entryIndex]);
 
-      delete[] ptsTran;
+      delete[] ptsTran.m_pos;
 
 
     }
@@ -755,7 +751,7 @@ namespace tpcl
 
     int inSrIndex = 0;
     //take first Xi_maxCandidates entries from dictionary which were considered close enough to estimation:
-    for (inSrIndex; inSrIndex < (int)inSearchRadius.size(); inSrIndex++)
+    for (inSrIndex; inSrIndex < int(inSearchRadius.size()); inSrIndex++)
     {
       int gridIndex = inSearchRadius[inSrIndex];
 
@@ -782,7 +778,7 @@ namespace tpcl
 
 
     //continue combing dictionary (remaining with best Xi_maxCandidates Candidates:
-    for (inSrIndex; inSrIndex < (int)inSearchRadius.size(); inSrIndex++)
+    for (inSrIndex; inSrIndex < int(inSearchRadius.size()); inSrIndex++)
     {
       int gridIndex = inSearchRadius[inSrIndex];
 

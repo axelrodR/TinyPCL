@@ -18,11 +18,6 @@
 
 #define SIGN(a,b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
 
-//#ifdef _DEBUG
-//#define new DEBUG_NEW
-//#endif
-
-
 
 namespace tpcl
 {
@@ -58,18 +53,14 @@ namespace tpcl
   * @param Xo_match         match found.
   * @param indist           inline distance.
   * return                  true if a match was found, flase otherwise*/
-  bool MatchPoint(const CSpatialHash2D& Xi_pcl1, const CVec3& Xi_p2, const CVec3& /*Xi_normal*/, const double indist, CVec3& Xo_match)
+  bool MatchPoint(const CSpatialHash2D& Xi_pcl1, const CVec3& Xi_p2, const CVec3& Xi_normal, const double Xi_distThreshold, CVec3& Xo_match, double& Xo_dist)
   {
-    // int GetNear(const CVec3& Xi_pos, int xi_bufSize, void** Xo_buf, CVec3* Xo_pos=0, float Xi_max2DRadius=0.0f) const;
-    // go over retrieved list (if size = 0, return false), check if closer than indist, update Xo_match if better normal match. return true.
-
-
-    // search nearest neighbor
-    if (Xi_pcl1.FindNearest(Xi_p2, &Xo_match, float(indist)))
+    // go over retrieved list (if size = 0, return false), check if closer than Xi_distThreshold, update Xo_match if better normal match. return true.
+    if (Xi_pcl1.FindNearest(Xi_p2, &Xo_match, float(Xi_distThreshold))) // search nearest neighbor
     {
       // check if it is an inlier
-      double dist = Dist(Xi_p2, Xo_match);
-      if (dist < indist)
+      double Xo_dist = Dist(Xi_p2, Xo_match);
+      if (Xo_dist < Xi_distThreshold)
         return true;
     }
     // if no match/neighbor found closer than indist, return false
@@ -436,78 +427,82 @@ namespace tpcl
 
   typedef TVec3<double> CVec3D;
 
-  double fitStep(CSpatialHash2D& Xi_pcl1, int Xi_pcl2size, CVec3* Xi_pcl2, CMat4& Xio_Rt, const double indist)
+  void PerformIter(CSpatialHash2D& Xi_pcl1, const CPtCloud& Xi_pcl2, CMat4& Xio_Rt, const float Xi_regRes, double& Xo_transformationChange, double& Xo_PreviousFitnessScore)
   {
-    //PROFILE("fitStep");
+    //double l_distThreshold = 2 * Xi_regRes;
+    double l_scoreDistThreshold = 2 * Xi_regRes;
+    double l_regDistThreshold = 2 * Xi_regRes;   //l_regDistThreshold <= l_scoreDistThreshold
+    double l_accError = 0;
     // extract matrix and translation vector
-    double r00 = Xio_Rt.m[0][0]; double r01 = Xio_Rt.m[0][1]; double r02 = Xio_Rt.m[0][2];
-    double r10 = Xio_Rt.m[1][0]; double r11 = Xio_Rt.m[1][1]; double r12 = Xio_Rt.m[1][2];
-    double r20 = Xio_Rt.m[2][0]; double r21 = Xio_Rt.m[2][1]; double r22 = Xio_Rt.m[2][2];
-    double t0 = Xio_Rt.m[3][0]; double t1 = Xio_Rt.m[3][1]; double t2 = Xio_Rt.m[3][2];
-    CVec3D cm1d(0, 0, 0), cm2d(0, 0, 0);  // center of masses for both clouds (as doubles)
-    CVec3 cm1, cm2;   // center of masses in floats
-    int activeSize = 0;
+    CVec3D l_massCenter1(0, 0 ,0), l_massCenter2(0, 0, 0);  // center of masses for both clouds (as doubles)
+    CVec3 l_massCenter1f, l_massCenter2f;   // center of masses in floats
+    int matchSize = 0;
+    int accErrorSize = 0;
 
     double H[9] = { 0 };
 
-#pragma omp parallel
+    #pragma omp parallel
     {
-      CVec3D partialCm1d(0, 0, 0), partialCm2d(0, 0, 0);
+      CVec3D partialMC1(0, 0, 0), partialMC2(0, 0, 0);
       double partialH[9] = { 0 };
-      CVec3* pts1Matched = new CVec3[Xi_pcl2size];
-      CVec3* pts2Matched = new CVec3[Xi_pcl2size]; //and transformed.
+      CVec3* pts1Matched = new CVec3[Xi_pcl2.m_numPts];
+      CVec3* pts2Matched = new CVec3[Xi_pcl2.m_numPts]; //and transformed.
       int numPts = 0;
 
       // establish correspondences
-#pragma omp for reduction(+:activeSize)
-      for (int i = 0; i<Xi_pcl2size; i++)
+      #pragma omp for reduction(+:matchSize, accErrorSize, l_accError)
+      for (int i = 0; i<Xi_pcl2.m_numPts; i++)
       {
         // transform point according to R|t
-        CVec3 pos = Xi_pcl2[i];
-        pts2Matched[numPts].x = float(r00*pos.x + r01*pos.y + r02*pos.z + t0);
-        pts2Matched[numPts].y = float(r10*pos.x + r11*pos.y + r12*pos.z + t1);
-        pts2Matched[numPts].z = float(r20*pos.x + r21*pos.y + r22*pos.z + t2);
+        MultiplyVectorRightSidePlusOffset(Xio_Rt, Xi_pcl2.m_pos[i], pts2Matched[numPts]);
+
 
         // search nearest neighbor
         CVec3 normal(0, 0, 1);
-        if (!MatchPoint(Xi_pcl1, pts2Matched[numPts], normal, indist, pts1Matched[numPts]))
+        double l_dist;
+        if (!MatchPoint(Xi_pcl1, pts2Matched[numPts], normal, l_scoreDistThreshold, pts1Matched[numPts], l_dist))
           continue;   // no nearest point within radius
+        
+        l_accError += Dist(pts2Matched[numPts], pts1Matched[numPts]);
+        accErrorSize++;
 
-        partialCm1d += CVec3D(pts1Matched[numPts].x, pts1Matched[numPts].y, pts1Matched[numPts].z);
-        partialCm2d += CVec3D(pts2Matched[numPts].x, pts2Matched[numPts].y, pts2Matched[numPts].z);
+        if (!(l_dist < l_regDistThreshold))
+          continue;
 
-        activeSize++;
+        partialMC1 += CVec3D(pts1Matched[numPts].x, pts1Matched[numPts].y, pts1Matched[numPts].z);
+        partialMC2 += CVec3D(pts2Matched[numPts].x, pts2Matched[numPts].y, pts2Matched[numPts].z);
+
+        matchSize++;
         numPts++;
       }
 
-#pragma omp critical
+      #pragma omp critical
       {
-        cm1d += partialCm1d;
-        cm2d += partialCm2d;
+        l_massCenter1 += partialMC1;
+        l_massCenter2 += partialMC2;
       }
 
-#pragma omp barrier 
+      #pragma omp barrier 
       // compute center of mass (average) from sums
-#pragma omp master
+      #pragma omp master
       {
-        cm1d /= (double)activeSize;
-        cm2d /= (double)activeSize;
-        cm1 = CVec3(float(cm1d.x), float(cm1d.y), float(cm1d.z));
-        cm2 = CVec3(float(cm2d.x), float(cm2d.y), float(cm2d.z));
+        Xo_PreviousFitnessScore = l_accError / accErrorSize;
+        l_massCenter1 /= (double)matchSize;
+        l_massCenter2 /= (double)matchSize;
+        l_massCenter1f = CVec3(float(l_massCenter1.x), float(l_massCenter1.y), float(l_massCenter1.z));
+        l_massCenter2f = CVec3(float(l_massCenter2.x), float(l_massCenter2.y), float(l_massCenter2.z));
       }
-#pragma omp barrier
+      #pragma omp barrier
 
       // subtract center of mass
       //#pragma omp for 
       for (int i = 0; i < numPts; i++)
       {
-        pts1Matched[i] -= cm1;
-        pts2Matched[i] -= cm2;
+        pts1Matched[i] -= l_massCenter1f;
+        pts2Matched[i] -= l_massCenter2f;
       }
 
       // compute relative rotation matrix R and translation vector t
-      //H = q_t^T*q_m = sum(~q_t[i] 3x1 * q_m[i] 1x3) = 3x3.
-      //#pragma omp /*for*/ reduction(+: H[0],H[1],H[2],H[3],H[4],H[5],H[6],H[7],H[8],H[9],H[10],H[11])
       for (int i = 0; i < numPts; i++)
       {
         partialH[0] += double(pts2Matched[i].x * pts1Matched[i].x); partialH[1] += double(pts2Matched[i].x * pts1Matched[i].y); partialH[2] += double(pts2Matched[i].x * pts1Matched[i].z);
@@ -515,7 +510,7 @@ namespace tpcl
         partialH[6] += double(pts2Matched[i].z * pts1Matched[i].x); partialH[7] += double(pts2Matched[i].z * pts1Matched[i].y); partialH[8] += double(pts2Matched[i].z * pts1Matched[i].z);
       }
 
-#pragma omp critical
+      #pragma omp critical
       {
         H[0] += partialH[0]; H[1] += partialH[1]; H[2] += partialH[2];
         H[3] += partialH[3]; H[4] += partialH[4]; H[5] += partialH[5];
@@ -530,69 +525,61 @@ namespace tpcl
     svd3x3(H, U, W, V);
 
     CMat4 TranU; Transpose(U, TranU);
-    CMat4 R_ = V * TranU;
+    CMat4 RChange = V * TranU;
 
-    double det = MatrixDeterminant(&R_);
+    double det = MatrixDeterminant(&RChange);
     // fix improper matrix problem
     if (det<0) {
       CMat4 B; MatrixIdentity(&B);
       B.m[2][2] = float(det);
-      R_ = V*B*TranU;
+      RChange = V*B*TranU;
     }
 
-    CVec3 R_mut; MultiplyVectorRightSide(R_, cm2, R_mut);
-    CVec3 t_ = cm1 - R_mut;
+    CVec3 R_mut; MultiplyVectorRightSide(RChange, l_massCenter2f, R_mut);
+    CVec3 tChange = l_massCenter1f - R_mut;
 
     // compose: R|t = R_|t_ * R|t
-    Xio_Rt = R_ * Xio_Rt;
+    Xio_Rt = RChange * Xio_Rt;
     CVec3 t(Xio_Rt.m[3][0], Xio_Rt.m[3][1], Xio_Rt.m[3][2]);
-    MultiplyVectorRightSide(R_, t, R_mut);
-    t = R_mut + t_;
+    MultiplyVectorRightSide(RChange, t, R_mut);
+    t = R_mut + tChange;
     Xio_Rt.m[3][0] = t.x;    Xio_Rt.m[3][1] = t.y;    Xio_Rt.m[3][2] = t.z; Xio_Rt.m[3][3] = 1;
 
     // return max delta in parameters
-    for (int i = 0; i < 3; i++)
-      R_.m[i][i] -= 1;
-    R_.m[3][0] = t_.x;    R_.m[3][1] = t_.y;    R_.m[3][2] = t_.z;
+    RChange.m[3][0] = tChange.x;    RChange.m[3][1] = tChange.y;    RChange.m[3][2] = tChange.z;
     double length_mat, length_vec;
-    Lengths(R_, length_mat, length_vec);
+    Lengths(RChange, length_mat, length_vec);
 
-    return MaxT(length_mat, length_vec);
+    Xo_transformationChange = length_mat + length_vec;
   }
 
 
 
 
-  double getResidual(CSpatialHash2D& Xi_pcl1, int Xi_pcl2size, CVec3* Xi_pcl2, const CMat4& Xi_Rt, const double Xi_indist)
+  double FinalError(CSpatialHash2D& Xi_pcl1, const CPtCloud& Xi_pcl2, const CMat4& Xi_Rt, const double Xi_scoreDistThreshold)
   {
-    double residual = 0;
-    int inliers = 0;
+    double l_accError = 0;
+    int accErrorSize = 0;
 
     // extract matrix and translation vector
-    double r00 = Xi_Rt.m[0][0]; double r01 = Xi_Rt.m[0][1]; double r02 = Xi_Rt.m[0][2];
-    double r10 = Xi_Rt.m[1][0]; double r11 = Xi_Rt.m[1][1]; double r12 = Xi_Rt.m[1][2];
-    double r20 = Xi_Rt.m[2][0]; double r21 = Xi_Rt.m[2][1]; double r22 = Xi_Rt.m[2][2];
-    double t0 = Xi_Rt.m[3][0]; double t1 = Xi_Rt.m[3][1]; double t2 = Xi_Rt.m[3][2];
-    for (int i = 0; i<Xi_pcl2size; i++)
+    for (int i = 0; i<Xi_pcl2.m_numPts; i++)
     {
-      CVec3 query;
-      CVec3 result;
+      CVec3 transformedPt;
+      CVec3 closestPt;
 
       // transform point according to R|t
-      CVec3 Pos = Xi_pcl2[i];
-      query.x = (float)(r00*Pos.x + r01*Pos.y + r02*Pos.z + t0);
-      query.y = (float)(r10*Pos.x + r11*Pos.y + r12*Pos.z + t1);
-      query.z = (float)(r20*Pos.x + r21*Pos.y + r22*Pos.z + t2);
+      MultiplyVectorRightSidePlusOffset(Xi_Rt, Xi_pcl2.m_pos[i], transformedPt);
       // search for match
       CVec3 normal(0, 0, 1);
-      if (!MatchPoint(Xi_pcl1, query, normal, Xi_indist, result))
+      double dist;
+      if (!MatchPoint(Xi_pcl1, transformedPt, normal, Xi_scoreDistThreshold, closestPt, dist))
         continue;
-      residual += Dist(query, result);
-      inliers++;
+      l_accError += Dist(transformedPt, closestPt);
+      accErrorSize++;
     }
-    if (inliers != 0)
-      residual /= inliers;
-    return residual;
+    if (accErrorSize != 0)
+      l_accError /= accErrorSize;
+    return l_accError;
   }
 
 
@@ -613,10 +600,10 @@ namespace tpcl
     initMembers();
   }
 
-  ICP::ICP(double Xi_regThresh)
+  ICP::ICP(float Xi_regRes)
   {
     initMembers();
-    m_minDelta = Xi_regThresh;
+    m_regRes = Xi_regRes;
   }
 
   /******************************************************************************
@@ -635,20 +622,20 @@ namespace tpcl
   *: Method name: MainPointCloudUpdate
   *
   ******************************************************************************/
-  void ICP::MainPointCloudUpdate(int Xi_numPts, const CVec3* Xi_pts, bool Xi_clean)
+  void ICP::MainPointCloudUpdate(const CPtCloud& Xi_pcl, bool Xi_clean)
   {
     if (m_outsourceMainPC)
     {
-      m_mainHashed = new CSpatialHash2D(m_voxelSize);
+      m_mainHashed = new CSpatialHash2D(m_regRes);
       m_outsourceMainPC = false;
     }
-
+    
     if (Xi_clean)
       m_mainHashed->Clear();
 
-    for (int ptrIndex = 0; ptrIndex < Xi_numPts; ptrIndex++)
+    for (int ptrIndex = 0; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
     {
-      m_mainHashed->Add(Xi_pts[ptrIndex], (void*)(1));
+      m_mainHashed->Add(Xi_pcl.m_pos[ptrIndex], (void*)(1));
     }
   }
 
@@ -680,9 +667,9 @@ namespace tpcl
   *: Method name: setRegistrationThresh
   *
   ******************************************************************************/
-  void ICP::setRegistrationThresh(double Xi_regThresh)
+  void ICP::setRegistrationResolution(float Xi_regRes)
   {
-    m_minDelta = Xi_regThresh;
+    m_regRes = Xi_regRes;
   };
 
 
@@ -692,42 +679,33 @@ namespace tpcl
   *: Method name: FillPointCloud
   *
   ******************************************************************************/
-  //SoudRegistration(CMat4& Xo_registration, CVec3* Xi_pts, int Xi_numPts, int Xi_lineWidth = -1, CVec3* Xi_estimatedOrient = NULL);
-  float ICP::SecondaryPointCloudRegistration(CMat4& Xo_registration, CVec3* Xi_pts, int Xi_numPts, int /*Xi_lineWidth*/, CMat4* Xi_estimatedOrient)
+  float ICP::SecondaryPointCloudRegistration(CMat4& Xo_registration, const CPtCloud& Xi_pcl, CMat4* Xi_guess)
   {
-    if (Xi_numPts<5) {
-      //ERROR: Icp works only with at least 5 template points
-      return 0;
-    }
-
     // initial guess of orientation
-    if (Xi_estimatedOrient)
-      Xo_registration = *Xi_estimatedOrient;
+    if (Xi_guess)
+      Xo_registration = *Xi_guess;
     else
       MatrixIdentity(&Xo_registration);
 
-    std::vector<int>	l_active;
-    l_active.reserve(Xi_numPts);
-    //l_active.resize(Xi_numPts);
-    //for (int i = 0; i<Xi_numPts; i++)
-    //  l_active[i] = i;
 
-    //double m_inlier_ratio = 1;
-    double l_inlierDist = m_voxelSize;
+    double l_transformationEpsilon = 0.75 * m_regRes;
+    double l_fitnessEpsilon = 0.2 * m_regRes;
 
-    double delta;
-    const int max_iter = 200;
+    double l_transformationChange;
+    double l_PreviousFitnessScore;
 
-    for (int iter = 0; iter < max_iter; ++iter)
+    PerformIter(*m_mainHashed, Xi_pcl, Xo_registration, m_regRes, l_transformationChange, l_PreviousFitnessScore);
+    bool converged = (l_PreviousFitnessScore < l_fitnessEpsilon) || (l_transformationChange <= l_transformationEpsilon);
+
+    int l_iterLeft = 150;
+    while (!converged)
     {
-      l_inlierDist = MaxT(l_inlierDist*0.9f, 0.05);
-
-      delta = fitStep(*m_mainHashed, Xi_numPts, Xi_pts, Xo_registration, l_inlierDist);
-      if (delta <= m_minDelta)
-        break;
+      PerformIter(*m_mainHashed, Xi_pcl, Xo_registration, m_regRes, l_transformationChange, l_PreviousFitnessScore);
+      l_iterLeft--;
+      converged = (l_PreviousFitnessScore < l_fitnessEpsilon) || (l_transformationChange < l_transformationEpsilon) || (l_iterLeft == 0);
     }
 
-    return (float)getResidual(*m_mainHashed, Xi_numPts, Xi_pts, Xo_registration, m_voxelSize);
+    return float(FinalError(*m_mainHashed, Xi_pcl, Xo_registration, 5 * m_regRes));
   }
 
 
@@ -737,11 +715,10 @@ namespace tpcl
 
   void ICP::initMembers()
   {
-    m_voxelSize = 0.5;
-    m_mainHashed = new CSpatialHash2D(m_voxelSize);
+    m_regRes = 0.5;
+    m_mainHashed = new CSpatialHash2D(m_regRes);
     m_mainHashed->Clear();
     m_outsourceMainPC = false;
-    m_minDelta = 1e-4f;
   }
 
 

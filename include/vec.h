@@ -148,6 +148,7 @@ namespace tpcl
   template <typename T> inline void Multiply(const TMat4<T>& lhs, const TVec3<T>& rhs, TMat4<T>& res);
   template <typename TMat4, typename TVec3> inline void TransposeLeftMultiply(const TMat4& lhs, const TVec3& rhs, TMat4& res);
   template <typename TMat4, typename TVec3> inline void MultiplyVectorRightSide(const TMat4& lhs, const TVec3& rhs, TVec3& res);
+  template <typename TMat4, typename TVec3> inline void MultiplyVectorRightSidePlusOffset(const TMat4& lhs, const TVec3& rhs, TVec3& res);
 
 
   typedef TVec3<float> CVec3;
@@ -597,6 +598,22 @@ namespace tpcl
     tmp.x = fTmpR[0];
     tmp.y = fTmpR[1];
     tmp.z = fTmpR[2];
+    res = tmp;
+  }
+
+  template <typename TMat4, typename TVec3>
+  inline void MultiplyVectorRightSidePlusOffset(const TMat4& lhs, const TVec3& rhs, TVec3& res)
+  {
+    TVec3 tmp;
+    float fTmp[3] = { rhs.x , rhs.y, rhs.z };
+    double fTmpR[3] = { 0 };
+    for (int r = 0; r<3; ++r)
+    {
+      fTmpR[r] = lhs.m[r][0] * fTmp[0] + lhs.m[r][1] * fTmp[1] + lhs.m[r][2] * fTmp[2];
+    }
+    tmp.x = float(fTmpR[0] + lhs.m[3][0]);
+    tmp.y = float(fTmpR[1] + lhs.m[3][1]);
+    tmp.z = float(fTmpR[2] + lhs.m[3][2]);
     res = tmp;
   }
 

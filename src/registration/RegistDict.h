@@ -30,7 +30,7 @@
 #define __tpcl_register_dict_H
 
 
-#include "../include/registration.h"
+#include "pcl.h"
 
 
   /******************************************************************************
@@ -57,7 +57,7 @@ namespace tpcl
   *
   ******************************************************************************/
 
-  class CCoarseRegister : public IRegister
+  class CCoarseRegister
   {
   public:
     /******************************************************************************
@@ -77,9 +77,9 @@ namespace tpcl
 
     /** update the main point cloud in which registration is searched for, for a secondary point cloud.
     *   adds the dictionary's entries created from the input point cloud.
-    * @param Xi_pts           point cloud to add to existing main point cloud.
+    * @param Xi_pcl           point cloud to add to existing main point cloud.
     * @param Xi_clean         if true deletes all previous information of main point cloud. otherwise adds the new point cloud to the previous. */
-    void MainPointCloudUpdate(int Xi_numPts, const CVec3* Xi_pts, bool Xi_clean = false);
+    void MainPointCloudUpdate(const CPtCloud& Xi_pcl, bool Xi_clean = false);
 
     /** Get hashed main point cloud.
     * @param return         pointer to hashed main point cloud. */
@@ -93,7 +93,7 @@ namespace tpcl
     * @param Xi_estimatedOrient   estimation of registration location (only uses location vector). if NULL then compare to all dictionary's entries.
     * return                      registration's score (ICP based) - the lower the better.
     * !!!!currently not supporting unordered point cloud!!!! */
-    float SecondaryPointCloudRegistration(CMat4& Xo_registration, CVec3* Xi_pts, int Xi_numPts, int Xi_lineWidth = -1, CMat4* Xi_estimatedOrient = 0);
+    float SecondaryPointCloudRegistration(CMat4& Xo_registration, const CPtCloud& Xi_pcl, CMat4* Xi_estimatedOrient = NULL);
 
 
 
@@ -115,7 +115,7 @@ namespace tpcl
     * @param Xi_numPts            total points in the secondary point cloud.
     * @param Xi_estimatedOrient   estimation of registration location (only uses location vector). if NULL then compare to all dictionary's entries.
     * @return                     number of candidates found.*/
-    int SecondaryPointCloudRegistrationCandidates(int Xi_maxCandidates, CVec3* Xi_pts, float* Xo_grades, CMat4* Xo_rotations, int Xi_numPts, CMat4* Xi_estimatedOrient = NULL);
+    int SecondaryPointCloudRegistrationCandidates(const CPtCloud& Xi_pcl, int Xi_maxCandidates, float* Xo_grades, CMat4* Xo_rotations, CMat4* Xi_estimatedOrient = NULL);
 
 
     /** returns final registration from list of candidates, using RMSE to reduce list of candidates and ICP for final selection.
@@ -125,7 +125,7 @@ namespace tpcl
     * @param Xi_registrations     list of the candidates' registration.
     * @param Xo_registration      best registration from candidates.
     * @return                     grade of final registration (ICP grade - the lower the better). */
-    float GetRegistrationFromListOfCandidates(int Xi_NumOfCandidates, int Xi_numPts, CVec3* Xi_pts, CMat4* Xi_registrations, CMat4& Xo_registration);
+    float GetRegistrationFromListOfCandidates(int Xi_NumOfCandidates, const CPtCloud& Xi_pcl, CMat4* Xi_registrations, CMat4& Xo_registration);
 
   };
 

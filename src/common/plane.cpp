@@ -27,10 +27,7 @@
 #include "plane.h"
 #include "common.h"
 #include "float.h"
-
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
+#include "../../include/vec.h"
 
 namespace tpcl
 {

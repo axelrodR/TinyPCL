@@ -27,11 +27,6 @@
 #include <string>
 
 
-//#ifdef _DEBUG
-//#define new DEBUG_NEW
-//#endif
-
-
 namespace tpcl
 {
 

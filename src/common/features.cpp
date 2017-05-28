@@ -24,10 +24,9 @@
 *
 ******************************************************************************/
 #include "features.h"
-#include "SpatialHash.h"
 #include <algorithm>
 #include "plane.h"
-#include <vector>
+#include "../../include/vec.h"
 
 
 
@@ -183,7 +182,7 @@ namespace tpcl
       delete[] window;
     }
   }
- 
+
 
 
   /******************************************************************************
@@ -214,20 +213,10 @@ namespace tpcl
 
   /******************************************************************************
   *
-  *: Method name: FillPointCloud
-  *
-  ******************************************************************************/
-  void Features::FillPointCloud(int /*Xi_numPts*/, const CVec3* /*Xi_pts*/, int /*Xo_numPts*/, const CVec3* /*Xo_pts*/)
-  {
-  }
-
-
-  /******************************************************************************
-  *
   *: Method name: FindNormal
   *
   ******************************************************************************/
-  void Features::FindNormal(int Xi_numPts, CVec3* Xio_pts, CVec3* Xo_Normals, float Xi_radius, CSpatialHash2D* Xi_globalHashed, bool Xi_fixZ)
+  void Features::FindNormal(CPtCloud& Xio_pcl, float Xi_radius, CSpatialHash2D* Xi_globalHashed, bool Xi_fixZ)
   {
     const int bufSize = 100;
     bool gotHashed = Xi_globalHashed != NULL;
@@ -236,9 +225,9 @@ namespace tpcl
     if (!gotHashed)
     {
       Xi_globalHashed = new CSpatialHash2D;
-      for (int Index = 0; Index < Xi_numPts; Index++)
+      for (int Index = 0; Index < Xio_pcl.m_numPts; Index++)
       {
-        Xi_globalHashed->Add(Xio_pts[Index], NULL);
+        Xi_globalHashed->Add(Xio_pcl.m_pos[Index], NULL);
       }
     }
 
@@ -249,31 +238,31 @@ namespace tpcl
     int numOfClose = 0;
 
       #pragma omp for
-    for (int ptIndex = 0; ptIndex < Xi_numPts; ptIndex++)
-    {
+      for (int ptIndex = 0; ptIndex < Xio_pcl.m_numPts; ptIndex++)
+      {
         float radius = Xi_radius * 2;
-      //get close points:
+        //get close points:
 
-        numOfClose = Xi_globalHashed->GetNear(Xio_pts[ptIndex], bufSize, unsuedBuf, closePts, radius);
+        numOfClose = Xi_globalHashed->GetNear(Xio_pcl.m_pos[ptIndex], bufSize, unsuedBuf, closePts, radius);
 
-      //find plane:
+        //find plane:
         CPlane approxPlane;
         if (approxPlane.RanSaC(numOfClose, closePts, 1.0f) == 0)
-          Xo_Normals[ptIndex] = CVec3(0, 0, 1); //TODO: desice what to do if not enoguh points.
+          Xio_pcl.m_normal[ptIndex] = CVec3(0, 0, 1); //TODO: desice what to do if not enoguh points.
         else
         {
 
-      //update point's z:
+          //update point's z:
           if (Xi_fixZ)
-      Xio_pts[ptIndex].z = approxPlane.GetHeightAt(Xio_pts[ptIndex].x, Xio_pts[ptIndex].y);
+            Xio_pcl.m_pos[ptIndex].z = approxPlane.GetHeightAt(Xio_pcl.m_pos[ptIndex].x, Xio_pcl.m_pos[ptIndex].y);
 
-      //get normal and normalize it, up:
-      Xo_Normals[ptIndex] = approxPlane.GetNormal();
-      if (Xo_Normals[ptIndex].z < 0)
-        Xo_Normals[ptIndex].z = -Xo_Normals[ptIndex].z;
-      Normalize(Xo_Normals[ptIndex]);
-    }
-  }
+          //get normal and normalize it, up:
+          Xio_pcl.m_normal[ptIndex] = approxPlane.GetNormal();
+          if (Xio_pcl.m_normal[ptIndex].z < 0)
+            Xio_pcl.m_normal[ptIndex].z = -Xio_pcl.m_normal[ptIndex].z;
+          Normalize(Xio_pcl.m_normal[ptIndex]);
+        }
+      }
     }
 
     if (!gotHashed)
@@ -289,56 +278,60 @@ namespace tpcl
   *: Method name: DenoiseRangeOfOrderedPointCloud
   *
   ******************************************************************************/
-  int Features::DenoiseRangeOfOrderedPointCloud(int Xi_lineWidth, int Xi_numlines, int Xi_medFiltSize0, int Xi_medFiltSize1, float Xi_distFromMedianThresh, CVec3* Xi_pts, CVec3* Xo_ptsDenoised)
+  void Features::DenoiseRangeOfOrderedPointCloud(const CPtCloud& Xi_pcl, CPtCloud& Xo_pcl, int Xi_medFiltSize0, int Xi_medFiltSize1, float Xi_distFromMedianThresh)
   {
-    int totalSize = Xi_lineWidth * Xi_numlines;
+    int numlines = Xi_pcl.m_numPts / Xi_pcl.m_lineWidth;
 
     //convert to range image (each pixle in ptsLocal has it's xyz).
-    float* rangeImage = new float[totalSize];
-#pragma omp parallel for
-    for (int ptrIndex = 0; ptrIndex < totalSize; ptrIndex++)
+    float* rangeImage = new float[Xi_pcl.m_numPts];
+    #pragma omp parallel for
+    for (int ptrIndex = 0; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
     {
-      rangeImage[ptrIndex] = Length(Xi_pts[ptrIndex]);
+      rangeImage[ptrIndex] = Length(Xi_pcl.m_pos[ptrIndex]);
     }
 
     //find diferent points:
-    float* distFiltered = new float[totalSize];
-    float* threshFiltered = new float[totalSize];
+    float* distFiltered = new float[Xi_pcl.m_numPts];
+    float* threshFiltered = new float[Xi_pcl.m_numPts];
 
-    Median2D(Xi_lineWidth, Xi_numlines, Xi_medFiltSize0, rangeImage, distFiltered);
+    Median2D(Xi_pcl.m_lineWidth, numlines, Xi_medFiltSize0, rangeImage, distFiltered);
 
 #pragma omp parallel for
-    for (int row = 0; row < Xi_numlines; row++)
+    for (int row = 0; row < numlines; row++)
     {
-      for (int col = 0; col < Xi_lineWidth; col++)
+      for (int col = 0; col < Xi_pcl.m_lineWidth; col++)
       {
-        int index = (row * Xi_lineWidth) + col;
+        int index = (row * Xi_pcl.m_lineWidth) + col;
         distFiltered[index] = (abs(distFiltered[index] - rangeImage[index]) < Xi_distFromMedianThresh) ? 1.0f : 0.0f;
       }
     }
 
-    Median2D(Xi_lineWidth, Xi_numlines, Xi_medFiltSize1, distFiltered, threshFiltered);
+    Median2D(Xi_pcl.m_lineWidth, numlines, Xi_medFiltSize1, distFiltered, threshFiltered);
 
     int outputSize = 0;
-    for (int row = 0; row < Xi_numlines; row++)
+    for (int row = 0; row < numlines; row++)
     {
-      for (int col = 0; col < Xi_lineWidth; col++)
+      for (int col = 0; col < Xi_pcl.m_lineWidth; col++)
       {
-        int index = (row * Xi_lineWidth) + col;
+        int index = (row * Xi_pcl.m_lineWidth) + col;
 
         if ((distFiltered[index] == 1) && (threshFiltered[index] == 1))
         {
-          Xo_ptsDenoised[outputSize] = Xi_pts[index];
+          Xo_pcl.m_pos[outputSize] = Xi_pcl.m_pos[index];
+          if ((Xi_pcl.m_color != 0) && (Xo_pcl.m_color != 0))
+            Xo_pcl.m_color[outputSize] = Xi_pcl.m_color[index];
+          if ((Xi_pcl.m_normal != 0) && (Xo_pcl.m_normal != 0))
+            Xo_pcl.m_normal[outputSize] = Xi_pcl.m_normal[index];
           outputSize++;
         }
       }
     }
 
+    Xo_pcl.m_numPts = outputSize;
+
     delete[] rangeImage;
     delete[] distFiltered;
     delete[] threshFiltered;
-
-    return outputSize;
   }
 
 
@@ -349,12 +342,9 @@ namespace tpcl
   *: Method name: DenoiseRangeOfPointCloud
   *
   ******************************************************************************/
-  int Features::DenoiseRangeOfPointCloud(float /*Xi_res*/, int /*Xi_medFiltSize0*/, int /*Xi_medFiltSize1*/, float /*Xi_distFromMedianThresh*/, int Xi_numPts, CVec3* Xi_pts, CVec3* Xo_ptsDenoised)
+  void Features::DenoiseRangeOfPointCloud()
   {
-    //temp: input = outpout
-    for (int index = 0; index < Xi_numPts; index++)
-      Xo_ptsDenoised[index] = Xi_pts[index];
-    return 0;
+
   }
 
 
@@ -364,16 +354,16 @@ namespace tpcl
   *: Method name: DownSamplePointCloud
   *
   ******************************************************************************/
-  void Features::DownSamplePointCloud(float Xi_voxelSize, int Xi_numPts, const CVec3* Xi_pts, int& Xo_numPts, CVec3* Xo_pts)
+  void Features::DownSamplePointCloud(const CPtCloud& Xi_pcl, CPtCloud& Xo_pcl, float Xi_voxelSize)
   {
     float InvVoxelSize = 1.0f / Xi_voxelSize;
 
     //find min/max x/y/z:
-    CVec3 l_bbox[2] = { Xi_pts[0], Xi_pts[0] };
-    for (int ptrIndex = 1; ptrIndex < Xi_numPts; ptrIndex++)
+    CVec3 l_bbox[2] = { Xi_pcl.m_pos[0], Xi_pcl.m_pos[0] };
+    for (int ptrIndex = 1; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
     {
-      l_bbox[0] = Min_ps(l_bbox[0], Xi_pts[ptrIndex]);
-      l_bbox[1] = Max_ps(l_bbox[1], Xi_pts[ptrIndex]);
+      l_bbox[0] = Min_ps(l_bbox[0], Xi_pcl.m_pos[ptrIndex]);
+      l_bbox[1] = Max_ps(l_bbox[1], Xi_pcl.m_pos[ptrIndex]);
     }
 
     //create downsampling vector:
@@ -385,13 +375,13 @@ namespace tpcl
 
     bool* VisitedVoxel = new bool[Mxyz];
     memset(VisitedVoxel, false, Mxyz * sizeof(bool));
-    std::vector<CVec3> DownSampledPts;
 
-    for (int ptrIndex = 0; ptrIndex < Xi_numPts; ptrIndex++)
+    int outputSize = 0;
+    for (int ptrIndex = 0; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
     {
-      float x = Xi_pts[ptrIndex].x;
-      float y = Xi_pts[ptrIndex].y;
-      float z = Xi_pts[ptrIndex].z;
+      float x = Xi_pcl.m_pos[ptrIndex].x;
+      float y = Xi_pcl.m_pos[ptrIndex].y;
+      float z = Xi_pcl.m_pos[ptrIndex].z;
 
       //find point's voxel index:
       int xInd = int(floor((x - l_bbox[0].x) * InvVoxelSize));
@@ -407,19 +397,19 @@ namespace tpcl
       //if we haven't filled this voxel with a point yet, add current point:
       if (!VisitedVoxel[index])
       {
-        DownSampledPts.push_back(Xi_pts[ptrIndex]);
+        Xo_pcl.m_pos[outputSize] = Xi_pcl.m_pos[ptrIndex];
+        if ((Xi_pcl.m_color != 0) && (Xo_pcl.m_color != 0))
+          Xo_pcl.m_color[outputSize] = Xi_pcl.m_color[ptrIndex];
+        if ((Xi_pcl.m_normal != 0) && (Xo_pcl.m_normal != 0))
+          Xo_pcl.m_normal[outputSize] = Xi_pcl.m_normal[ptrIndex];
+        outputSize++;
+
         VisitedVoxel[index] = true;
       }
     }
     delete[] VisitedVoxel;
 
-
-    //save selected points:
-    for (int VecIndex = 0; VecIndex < (int)DownSampledPts.size(); VecIndex++)
-    {
-      Xo_pts[VecIndex] = DownSampledPts[VecIndex];
-    }
-    Xo_numPts = int(DownSampledPts.size());
+    Xo_pcl.m_numPts = outputSize;
   }
 
 
@@ -430,39 +420,31 @@ namespace tpcl
   *: Method name: RMSEofRegistration
   *
   ******************************************************************************/
-  float Features::RMSEofRegistration(float hashRes, CSpatialHash2D* Xi_pcl1, int Xi_pcl2size, CVec3* Xi_pcl2, CMat4& Xi_Rt)
+  float Features::RMSEofRegistration(CSpatialHash2D* Xi_pcl1, const CPtCloud& Xi_pcl2, float Xi_max2DRadius, const CMat4& Xi_Rt)
   {
     double RMSE = 0;
-    float max2DRadius = hashRes * 2;
-    float outPenalty = max2DRadius*max2DRadius*1.5f;
+    float outPenalty = Xi_max2DRadius*Xi_max2DRadius*1.5f;
 
-    // extract matrix and translation vector
-    double r00 = Xi_Rt.m[0][0]; double r01 = Xi_Rt.m[0][1]; double r02 = Xi_Rt.m[0][2];
-    double r10 = Xi_Rt.m[1][0]; double r11 = Xi_Rt.m[1][1]; double r12 = Xi_Rt.m[1][2];
-    double r20 = Xi_Rt.m[2][0]; double r21 = Xi_Rt.m[2][1]; double r22 = Xi_Rt.m[2][2];
-    double t0  = Xi_Rt.m[3][0]; double t1  = Xi_Rt.m[3][1]; double t2  = Xi_Rt.m[3][2];
     #pragma omp parallel for reduction(+:RMSE)
-    for (int i = 0; i<Xi_pcl2size; i++)
+    for (int i = 0; i<Xi_pcl2.m_numPts; i++)
     {
-      CVec3 query;
-      CVec3 result;
+      CVec3 transformedPt;
+      CVec3 closestPt;
 
       // transform point according to R|t
-      CVec3 Pos = Xi_pcl2[i];
-      query.x = float(r00*Pos.x + r01*Pos.y + r02*Pos.z + t0);
-      query.y = float(r10*Pos.x + r11*Pos.y + r12*Pos.z + t1);
-      query.z = float(r20*Pos.x + r21*Pos.y + r22*Pos.z + t2);
+      MultiplyVectorRightSidePlusOffset(Xi_Rt, Xi_pcl2.m_pos[i], transformedPt);
+
       // search for match
       float dist = outPenalty;
-      if (Xi_pcl1->FindNearest(query, &result, max2DRadius))
+      if (Xi_pcl1->FindNearest(transformedPt, &closestPt, Xi_max2DRadius))
       {
-        dist = DistSqr(query, result);
+        dist = DistSqr(transformedPt, closestPt);
       }
 
       RMSE += dist;
     }
     
-    RMSE /= Xi_pcl2size;
+    RMSE /= Xi_pcl2.m_numPts;
     return float(sqrt(RMSE));
   }
 
