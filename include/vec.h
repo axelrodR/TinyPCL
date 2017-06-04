@@ -261,7 +261,7 @@ namespace tpcl
 
   template <typename T>
   inline bool TVec3<T>::operator!=(const TVec3<T>& rhs) const
-    { return (x==rhs.x && y==rhs.y && z==rhs.z); }
+    { return !(x==rhs.x && y==rhs.y && z==rhs.z); }
 
   template <typename T>
   inline TVec3<T> operator*(T lhs, const TVec3<T>& rhs)

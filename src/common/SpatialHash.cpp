@@ -23,13 +23,29 @@
 #include "common.h"
 #include <unordered_map>
 #include <vector>
-
+#include <algorithm>    // std::sort
 
 namespace tpcl{
 
 /******************************************************************************
 *                             INTERNAL CONSTANTS                              *
 ******************************************************************************/
+
+  const int MAX_SPIRAL_RANGE = 5;
+  const int SPIRAL_ARR_SIZE = (2*MAX_SPIRAL_RANGE+1) * (2 * MAX_SPIRAL_RANGE + 1);
+
+  struct COffset
+  {
+    short dx, dy;
+    int distSqr;
+    bool operator<(const COffset& rhs) const { return distSqr < rhs.distSqr; }
+  };
+
+  // pattern for searching at increasing range
+  COffset* s_spiral = 0;
+
+  const float MAX_SPIRAL_DIST_SQR = MAX_SPIRAL_RANGE * MAX_SPIRAL_RANGE;
+
 
 /******************************************************************************
 *                        INCOMPLETE CLASS DECLARATIONS                        *
@@ -80,6 +96,24 @@ struct Node1D {void* obj; float pt;};
 /** Each cell is hashed to an array of object+position pairs */
 typedef std::unordered_map<CInt3, std::vector<Node2D> , HashCompare2D, HashCompare2D> MapInt3;
 
+  void FillSpiralOrder()
+  {
+    s_spiral = new COffset[SPIRAL_ARR_SIZE];
+    int n = 0;
+    for (int y = - MAX_SPIRAL_RANGE; y <= MAX_SPIRAL_RANGE; ++y)
+    {
+      for (int x = - MAX_SPIRAL_RANGE; x <= MAX_SPIRAL_RANGE; ++x)
+      {
+        s_spiral[n].dx = x;
+        s_spiral[n].dy = y;
+        int ax = MaxT(abs(x) - 1, 0);
+        int ay = MaxT(abs(y) - 1, 0);
+        s_spiral[n].distSqr = ax * ax + ay * ay;
+        n++;
+      }
+    }
+    std::sort(s_spiral, s_spiral + SPIRAL_ARR_SIZE);
+  }
 
 /******************************************************************************
 *                           EXPORTED CLASS METHODS                            *
@@ -103,6 +137,8 @@ CSpatialHash2D::CSpatialHash2D (float res)
   m_data = new MapInt3();
   m_res = res;
   m_resInv = (float)(1.0 / m_res);
+  if (s_spiral == 0)
+    FillSpiralOrder();
 }
 
 /******************************************************************************
@@ -156,7 +192,7 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
   MapInt3* l_data = (MapInt3*)m_data;
   const void* l_minObj = 0;
   const CVec3* l_minPt = 0;
-  float l_minDist = 1E10;
+  float l_minDistSqr = 1E20f;
   float s_epsilon = 0.01f * m_res;
   if (Xi_max2DRadius < s_epsilon)
     Xi_max2DRadius  = s_epsilon;
@@ -166,7 +202,45 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
   CInt3 l_cell = CInt3((int)l_v.x, (int)l_v.y, (int)l_v.z);
   int rad = int(ceil(Xi_max2DRadius * m_resInv));
 
-  // go over all cells and objects in them to find the minimal distance
+  // go over all cells in SPIRAL ORDER
+  for (int i=0; i<SPIRAL_ARR_SIZE; ++i)
+  {
+    // if the cell is further than found point get out
+    if (s_spiral[i].distSqr*m_res*m_res > l_minDistSqr)
+      break;
+
+    // get the cell
+    int dx = s_spiral[i].dx, dy = s_spiral[i].dy;
+    CInt3 l_c = CInt3(l_cell.x + dx, l_cell.y + dy, 0);
+    MapInt3::const_iterator l_it = l_data->find(l_c);
+    if (l_it == l_data->end())
+      continue; // empty cell
+
+    // search the objects in each cell
+    const std::vector<Node2D>& nodes = l_it->second;
+    for (unsigned int i = 0; i<nodes.size(); i++)
+    {
+      float l_dist2DSqr = DistSqr2D(nodes[i].pt, Xi_pos);
+      if (l_dist2DSqr > max2dRadSqr)
+        continue;
+      float l_distSqr = DistSqr(nodes[i].pt, Xi_pos);
+      if (l_distSqr >= l_minDistSqr)
+        continue;
+      l_minDistSqr = l_distSqr;
+      l_minObj = nodes[i].obj;
+      l_minPt = &(nodes[i].pt);
+    }
+  }
+  
+  // is the spiral enough?
+  if (l_minDistSqr < MAX_SPIRAL_DIST_SQR *  m_res * m_res)
+  {
+    if (Xo_pMinPt != 0)
+      *Xo_pMinPt = l_minPt == 0 ? CVec3(0, 0, 0) : *l_minPt;
+    return const_cast<void*>(l_minObj);
+  }
+
+  // go over all cells in range
   for (int x=-rad; x<=rad; x++)
   {
     for (int y=-rad; y<=rad; y++)
@@ -181,10 +255,10 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
         float l_dist2DSqr = DistSqr2D(nodes[i].pt, Xi_pos);
         if (l_dist2DSqr > max2dRadSqr)
           continue;
-        float l_dist = DistSqr(nodes[i].pt, Xi_pos);
-        if (l_dist >= l_minDist)
+        float l_distSqr = DistSqr(nodes[i].pt, Xi_pos);
+        if (l_distSqr >= l_minDistSqr)
           continue;
-        l_minDist = l_dist;
+        l_minDistSqr = l_distSqr;
         l_minObj  = nodes[i].obj;
         l_minPt = &(nodes[i].pt);
       }
