@@ -30,14 +30,8 @@
 #define __tpcl_register_dict_H
 
 
-#include "pcl.h"
-
-
-  /******************************************************************************
-  *                        INCOMPLETE CLASS DECLARATIONS                        *
-  ******************************************************************************/
-  struct CVec3;
-  struct CMat4;
+#include "../include/registration.h"
+#include "../include/vec.h"
 
 namespace tpcl
 {
@@ -51,13 +45,13 @@ namespace tpcl
   *
   *: Class name: SLDR_SP_CCoarseRegister
   *
-  *: Abstract: Coarse registeration based on dictionary
+  *: Abstract: Coarse registeration based on dictionary, with ICP registration refinements.
   *            Derived from the thesis of David Avidar (Malaach's group)
   *            see: <FILL PAPER REF HERE> 
   *
   ******************************************************************************/
 
-  class CCoarseRegister
+  class CCoarseRegister : public IRegister
   {
   public:
     /******************************************************************************
@@ -75,25 +69,26 @@ namespace tpcl
     * @return     range needed.*/
     float RangeNeeded();
 
-    /** update the main point cloud in which registration is searched for, for a secondary point cloud.
-    *   adds the dictionary's entries created from the input point cloud.
-    * @param Xi_pcl           point cloud to add to existing main point cloud.
-    * @param Xi_clean         if true deletes all previous information of main point cloud. otherwise adds the new point cloud to the previous. */
-    void MainPointCloudUpdate(const CPtCloud& Xi_pcl, bool Xi_clean = false);
+    /** Set main cloud point.
+    * Registration of secondary cloud points are done against this cloud using RegisterCloud()
+    * @param in_pcl           point cloud.
+    * @param in_append        if true, append points to the existing cloud
+    */
+    void SetMainPtCloud(const CPtCloud& in_pcl, bool in_append = false);
 
     /** Get hashed main point cloud.
     * @param return         pointer to hashed main point cloud. */
     void* getMainHashedPtr();
 
-    /** Get best dictionary registration for a secondary point cloud, with ICP registration refinements.
+    /** Get registration for a secondary point cloud against the main cloud
+    * The second cloud is not stored
+    * //TODO/// !!!!currently not supporting unordered point cloud!!!!
+    * @param Xi_pcl               secondary point cloud. //TODO/// - arranged by azimuth and latitude. i.e. row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
     * @param Xo_registration      best registration found.
-    * @param Xi_pts               secondary point cloud - arranged by azimuth and latitude. i.e. row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
-    * @param Xi_numPts            total points in the secondary point cloud.
-    * @param Xi_lineWidth         if it's an order point cloud then this is the width of the local point cloud.
-    * @param Xi_estimatedOrient   estimation of registration location (only uses location vector). if NULL then compare to all dictionary's entries.
-    * return                      registration's score (ICP based) - the lower the better.
-    * !!!!currently not supporting unordered point cloud!!!! */
-    float SecondaryPointCloudRegistration(CMat4& Xo_registration, const CPtCloud& Xi_pcl, CMat4* Xi_estimatedOrient = NULL);
+    * @param Xi_estimatedOrient   estimation of registration, if 0 then estimation is identity.
+    * @return                     registration's grade/error - the lower the better.
+    */
+    float RegisterCloud(const CPtCloud& Xi_pcl, CMat4& Xo_registration, CMat4* Xi_estimatedOrient = 0);
 
 
 

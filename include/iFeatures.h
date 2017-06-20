@@ -1,7 +1,3 @@
-// File Location: 
-
-// File Location: S:\gen\gengmtrx\gengmtrx_grid.h
-
 //
 // Copyright (c) 2016-2017 Geosim Ltd.
 // 
@@ -63,8 +59,7 @@ namespace tpcl
      *                          is below in_noiseTh - point is snapped to average)
      */
     virtual void DenoiseRange(const CPtCloud& in_pcl, CPtCloud& out_pcl,
-                              float in_windowSize, float in_noiseTh) = 0;
-
+                             int in_windowSize, float in_noiseTh) = 0;
 
     /** downsample a point cloud. Divides to grid from minXYZ (of pts) to max XYZ, of size m_voxelSize.
      *  If more than one point in same grid index, takes the first one encountered.

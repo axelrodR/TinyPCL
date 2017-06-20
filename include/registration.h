@@ -21,107 +21,54 @@
 //
 
 
-/******************************************************************************
-*
-*: Package Name: sldrcr_sp
-*
-*: Title:
-*
-******************************************************************************/
-
-#ifndef __sldrcr_sp_H
-#define __sldrcr_sp_H
+#ifndef __tpcl_sp_H
+#define __tpcl_sp_H
 
 #include "vec.h"
 
 
-/******************************************************************************
-*                                   IMPORTED                                  *
-******************************************************************************/
-
-
-  /******************************************************************************
-  *                        INCOMPLETE CLASS DECLARATIONS                        *
-  ******************************************************************************/
-
 namespace tpcl
 {
   class  CRegDictionary;         // registration Dictionary
+  struct CPtCloud;
 
   /******************************************************************************
-  *                              EXPORTED CLASSES                               *
-  ******************************************************************************/
-  /******************************************************************************
   *
-  *: Class name: TPCL_CCoarseRegister
-  *
-  *: Abstract: Coarse registeration vased on dictionary
-  *            Derived from the thesis of David Avidar (Malaach's group)
-  *            see: <FILL PAPER REF HERE> 
+  *: Class name: IRegister
   *
   ******************************************************************************/
 
+  /* Interface class for registration classes */
   class IRegister
   {
   public:
-    /******************************************************************************
-    *                               Public methods                                *
-    ******************************************************************************/
-    /** Constructor */
-    IRegister();
-
     /** destructor */
-    virtual ~IRegister();
+    virtual ~IRegister() = 0;
 
 
-    /** Build dictionary from global point cloud. Xi_pts IS being altered.
-    * @param Xi_pts           point cloud */
-    virtual void BuildDictionary(int Xi_numPts, const CVec3* Xi_pts);
+    /** Set main cloud point.
+     * Registration of secondary cloud points are done against this cloud using RegisterCloud()
+     * @param in_pcl           point cloud.
+     * @param in_append        if true, append points to the existing cloud
+     */
+    virtual void SetMainPtCloud(const CPtCloud& in_pcl, bool in_append = false) = 0;
 
 
-    /** Create and get list of registration matches for a local point cloud
-    * @param Xi_maxCandidates     maximum number of matches to return.
-    * @param Xi_pts               local point cloud - arranged by azimuth and latitude. i.e. row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
-    * @param Xi_originApprox      measured/approximate origin.
-    * @param Xo_candidates        list of the candidates (indices of the candidates in the dictionary).
-    * @param Xo_grades            list of the candidates grades.
-    * @param Xo_rotations         list of the candidates rotation.
-    * @param Xi_numPts            total points in the point cloud.
-    * @param Xi_numlines          if it's an order point cloud then this is the height of the local point cloud.    
-    * @param Xi_GPS               GPS estimation of registration location, if NULL then no estimation.
-    * @return                     number of candidates.*/
-    virtual int GetLocalRegistrationCandidates(int Xi_maxCandidates, CVec3* Xi_pts, CVec3 Xi_originApprox, int* Xo_candidates, float* Xo_grades, CMat4* Xo_rotations, int Xi_numPts, int Xi_numlines = -1, CVec3* Xi_GPS = NULL);
-
-
-    /** Get best registration match from created candidates list.
-    * @param Xi_NumOfCandidates   number of candidates.
-    * @param Xi_candidates        list of the candidates (indices of the candidates in the dictionary).
-    * @param Xi_grades            list of the candidates grades.
-    * @param Xi_rotations         list of the candidates rotation.
-    * @param Xo_best              best registration from candidates */
-    virtual void GetLocalRegistration(int Xi_NumOfCandidates, int* Xi_candidates, float* Xi_grades, CMat4* Xi_rotations, CMat4& Xo_best);
-
+    /** Get registration for a secondary point cloud against the main cloud
+     * The second cloud is not stored
+     * @param Xo_registration      best registration found.
+     * @param Xi_pcl               secondary point cloud.
+     * @param Xi_estimatedOrient   estimation of registration, if 0 then estimation is identity.
+     * @return                     registration's grade/error - the lower the better. 
+     */
+    virtual float RegisterCloud(const CPtCloud& in_pcl, CMat4& out_registration, CMat4* in_estimatedOrient = 0) = 0;
 
 
   protected:
-    /******************************************************************************
-    *                             Protected members                               *
-    ******************************************************************************/
-
-    int m_numPtsGlobal;
-    CVec3* m_ptsGlobal;       ///< a copyu of the original point cloud
-    CRegDictionary* m_dictionary;   ///< internal data used to store features of global cloud
-    void* m_opts;                   ///< implementation specific options
-
-    /******************************************************************************
-    *                             Protected methods                               *
-    ******************************************************************************/
 
   };
 
 
-
-
 } // namespace tpcl
 
-#endif
+#endif // __tpcl_sp_H

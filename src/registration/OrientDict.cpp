@@ -276,6 +276,7 @@ namespace tpcl
   ******************************************************************************/
   int COrientedGrid::ViewpointGridUpdate(float Xi_d_grid, float Xi_d_sensor, CVec3& Xi_minBox, CVec3& Xi_maxBox)
   {
+    Features feat;
     CSpatialHash2D& mainHashed = *((CSpatialHash2D*)(m_mainHashed));
 
     float invGridRes = 1.0f / Xi_d_grid;
@@ -284,7 +285,7 @@ namespace tpcl
     int GridWidth = int(ceil((Xi_maxBox.x - Xi_minBox.x) * invGridRes));
     int GridHeight = int(ceil((Xi_maxBox.y - Xi_minBox.y) * invGridRes));
 
-    CPtCloud gridPositions;  gridPositions.m_type = PCL_TYPE_FUSED;   gridPositions.m_color - NULL;
+    CPtCloud gridPositions;  gridPositions.m_type = PCL_TYPE_FUSED;   gridPositions.m_color = 0;
     gridPositions.m_numPts = GridHeight*GridWidth;
     gridPositions.m_pos = new CVec3[gridPositions.m_numPts];
     gridPositions.m_normal = new CVec3[gridPositions.m_numPts];
@@ -306,7 +307,7 @@ namespace tpcl
 
     //find normals:
     const float maxDistForPlane = m_voxelSize * 2;
-    Features::FindNormal(gridPositions, maxDistForPlane, &mainHashed, true);
+    feat.FillNormals(gridPositions, maxDistForPlane, &mainHashed, true);
 
     int preSize = m_size;
     m_size += gridPositions.m_numPts;
@@ -577,31 +578,42 @@ namespace tpcl
     float elevationRes = m_descHeight / float(M_PI);
     memset(Xo_RangeImage, 0, totalDescSize * sizeof(float));
 
-    bool checkMin = !(m_r_min == -1);
-    bool checkMax = !(m_r_max == -1);
-
     //put closest range per azimuth & elevation in the range image.
-    for (int i = 0; i < Xi_pcl.m_numPts; i++)
+    #pragma omp parallel
     {
-      float x = Xi_pcl.m_pos[i].x;
-      float y = Xi_pcl.m_pos[i].y;
-      float z = Xi_pcl.m_pos[i].z;
-      float azimuth = atan2(y, x);
-      float elevation = atan2(z, sqrt(x*x + y*y));
-      float r = sqrt(x*x + y*y + z*z);
+      float* partialRangeImage = new float[totalDescSize];
+      memset(partialRangeImage, 0, totalDescSize * sizeof(float));
 
-      if (checkMin && r < m_r_min)
-        continue;
-      if (checkMax && r > m_r_max)
-        continue;
+      #pragma omp for
+      for (int i = 0; i < Xi_pcl.m_numPts; i++)
+      {
+        float x = Xi_pcl.m_pos[i].x;
+        float y = Xi_pcl.m_pos[i].y;
+        float z = Xi_pcl.m_pos[i].z;
+        float azimuth = atan2(y, x);
+        float elevation = atan2(z, sqrt(x*x + y*y));
+        float r = sqrt(x*x + y*y + z*z);
 
-      int azimuthInds = int(floor((azimuth + M_PI) * azimuthRes));
-      int elevationInds = m_descHeight - 1 - int(floor((elevation + M_PI / 2) * elevationRes));
+        int azimuthInds = int(floor((azimuth + M_PI) * azimuthRes));
+        int elevationInds = m_descHeight - 1 - int(floor((elevation + M_PI / 2) * elevationRes));
 
-      int index = elevationInds*m_descWidth + azimuthInds;
+        int index = elevationInds*m_descWidth + azimuthInds;
 
-      if ((Xo_RangeImage[index] == 0) || (r < Xo_RangeImage[index]))
-        Xo_RangeImage[index] = r;
+        if ((partialRangeImage[index] == 0) || (r < partialRangeImage[index]))
+          partialRangeImage[index] = r;
+      }
+
+      #pragma omp critical
+      {
+        for (int row=0; row<m_descHeight; row++)
+          for (int col = 0; col < m_descWidth; col++)
+          {
+            int index = row*m_descWidth + col;
+
+            if ((Xo_RangeImage[index] == 0) || (partialRangeImage[index] < Xo_RangeImage[index]))
+              Xo_RangeImage[index] = partialRangeImage[index];
+          }
+      }
     }
   }
 
@@ -639,25 +651,37 @@ namespace tpcl
   {
     if (m_descriptors[Xi_entryIndex] == NULL)
     {
-      CPtCloud ptsTran; ptsTran.m_numPts = m_pclMain.m_numPts;
+      CPtCloud ptsTran;
       ptsTran.m_pos = new CVec3[m_pclMain.m_numPts];
+
       CMat4 orients = m_Orient[Xi_entryIndex];
-      CVec3 Pos = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
+      CVec3 MatRow0 = CVec3(orients.m[0][0], orients.m[0][1], orients.m[0][2]);
+      CVec3 MatRow1 = CVec3(orients.m[1][0], orients.m[1][1], orients.m[1][2]);
+      CVec3 MatRow2 = CVec3(orients.m[2][0], orients.m[2][1], orients.m[2][2]);
+      CVec3 Pos     = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
 
       //transform main point cloud to grid point's orientation:
-      #pragma omp parallel for
+      //#pragma omp parallel for
+      int num = 0;
+      float rMinSqr = m_r_min*m_r_min;
+      float rMaxSqr = m_r_max*m_r_max;
+
       for (int Index = 0; Index < m_pclMain.m_numPts; Index++)
       {
         //transform point:
-        CVec3 PosShifted = m_pclMain.m_pos[Index] - Pos;
-        CVec3 MatRow0 = CVec3(orients.m[0][0], orients.m[0][1], orients.m[0][2]);
-        CVec3 MatRow1 = CVec3(orients.m[1][0], orients.m[1][1], orients.m[1][2]);
-        CVec3 MatRow2 = CVec3(orients.m[2][0], orients.m[2][1], orients.m[2][2]);
-        ptsTran.m_pos[Index].x = DotProd(PosShifted, MatRow0);
-        ptsTran.m_pos[Index].y = DotProd(PosShifted, MatRow1);
-        ptsTran.m_pos[Index].z = DotProd(PosShifted, MatRow2);
-      }
+        CVec3 posShifted = m_pclMain.m_pos[Index] - Pos;
+        float rQsr = LengthSqr(posShifted);
+        if (rQsr < rMinSqr)
+          continue;
+        if (rQsr > rMaxSqr)
+          continue;
 
+        ptsTran.m_pos[num].x = DotProd(posShifted, MatRow0);
+        ptsTran.m_pos[num].y = DotProd(posShifted, MatRow1);
+        ptsTran.m_pos[num].z = DotProd(posShifted, MatRow2);
+        num++;
+      }
+      ptsTran.m_numPts = num;
 
       //create descriptor - range image, DFT
       int totalDescSize = m_descHeight * m_descWidth;
@@ -669,8 +693,6 @@ namespace tpcl
       Descriptor2DFT(m_descriptors[Xi_entryIndex], m_descriptorsDFT[Xi_entryIndex]);
 
       delete[] ptsTran.m_pos;
-
-
     }
 
     return m_descriptorsDFT[Xi_entryIndex];
@@ -743,6 +765,8 @@ namespace tpcl
       if (Dist(Xi_estimatePos, Pos) <= Xi_searchRadius)
         inSearchRadius.push_back(gridIndex);
     }
+
+    //TODO: see if inSearchRadius.size() == 0 -> Estimated position not in range of any grid point
 
     #pragma omp parallel for
     for (int inSrIndex = 0; inSrIndex < int(inSearchRadius.size()); inSrIndex++)

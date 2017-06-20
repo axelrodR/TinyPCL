@@ -8,7 +8,7 @@
 #include "common.h"
 #include <vector>
 #include "../../include/vec.h"
-
+#include "../include/ptCloud.h"
 
 //#include <D3dx9core.h> // uncommenet if using DirectX
 ////#include <ifr/ifrgen/ifrgen_stnd.h>
@@ -51,7 +51,7 @@ namespace tpcl
   * @param Xi_p2            a point from 2nd point cloud.
   * @param Xi_normal        !!curently not used!! - normal of the point to which we want to find a match.
   * @param Xo_match         match found.
-  * @param indist           inline distance.
+  * @param indist           inline distance. 
   * return                  true if a match was found, flase otherwise*/
   bool MatchPoint(const CSpatialHash2D& Xi_pcl1, const CVec3& Xi_p2, const CVec3& Xi_normal, const double Xi_distThreshold, CVec3& Xo_match, double& Xo_dist)
   {
@@ -59,7 +59,7 @@ namespace tpcl
     if (Xi_pcl1.FindNearest(Xi_p2, &Xo_match, float(Xi_distThreshold))) // search nearest neighbor
     {
       // check if it is an inlier
-      double Xo_dist = Dist(Xi_p2, Xo_match);
+      Xo_dist = Dist(Xi_p2, Xo_match);
       if (Xo_dist < Xi_distThreshold)
         return true;
     }
@@ -486,6 +486,8 @@ namespace tpcl
       // compute center of mass (average) from sums
       #pragma omp master
       {
+        //TODO: see if matchSize == 0 -> Zero points were matched with current registration
+
         Xo_PreviousFitnessScore = l_accError / accErrorSize;
         l_massCenter1 /= (double)matchSize;
         l_massCenter2 /= (double)matchSize;
@@ -622,7 +624,7 @@ namespace tpcl
   *: Method name: MainPointCloudUpdate
   *
   ******************************************************************************/
-  void ICP::MainPointCloudUpdate(const CPtCloud& Xi_pcl, bool Xi_clean)
+  void ICP::SetMainPtCloud(const CPtCloud& in_pcl, bool in_append)
   {
     if (m_outsourceMainPC)
     {
@@ -630,23 +632,23 @@ namespace tpcl
       m_outsourceMainPC = false;
     }
     
-    if (Xi_clean)
+    if (!in_append)
       m_mainHashed->Clear();
 
-    for (int ptrIndex = 0; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
+    for (int ptrIndex = 0; ptrIndex < in_pcl.m_numPts; ptrIndex++)
     {
-      m_mainHashed->Add(Xi_pcl.m_pos[ptrIndex], (void*)(1));
+      m_mainHashed->Add(in_pcl.m_pos[ptrIndex], (void*)(1));
     }
   }
 
-  void ICP::MainPointCloudUpdate(void* Xi_mainHashed)
+  void ICP::SetMainPtCloud(CSpatialHash2D* Xi_mainHashed)
   {
     if (!m_outsourceMainPC)
     {
       delete m_mainHashed;
     }
 
-    m_mainHashed = (CSpatialHash2D*)Xi_mainHashed;
+    m_mainHashed = Xi_mainHashed;
     m_outsourceMainPC = true;
   }
 
@@ -679,11 +681,13 @@ namespace tpcl
   *: Method name: FillPointCloud
   *
   ******************************************************************************/
-  float ICP::SecondaryPointCloudRegistration(CMat4& Xo_registration, const CPtCloud& Xi_pcl, CMat4* Xi_guess)
+  float ICP::RegisterCloud(const CPtCloud& Xi_pcl, CMat4& Xo_registration, CMat4* Xi_estimatedOrient)
   {
+    //TODO: see if Xi_pcl.m_numPts <5 -> ICP registration called with less than 5 points
+
     // initial guess of orientation
-    if (Xi_guess)
-      Xo_registration = *Xi_guess;
+    if (Xi_estimatedOrient)
+      Xo_registration = *Xi_estimatedOrient;
     else
       MatrixIdentity(&Xo_registration);
 

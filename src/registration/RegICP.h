@@ -17,7 +17,7 @@
 *                                   IMPORTED                                  *
 ******************************************************************************/
 
-#include "pcl.h"
+#include "../include/registration.h"
 
 /******************************************************************************
 *                        INCOMPLETE CLASS DECLARATIONS                        *
@@ -25,13 +25,10 @@
 struct CVec3;
 struct CMat4;
 
-namespace tpcl
-{
-  class CSpatialHash2D;
-}
 
 namespace tpcl
 {
+  class CSpatialHash2D;
 
   /******************************************************************************
   *                              EXPORTED CLASSES                               *
@@ -47,7 +44,7 @@ namespace tpcl
   *
   ******************************************************************************/
 
-  class ICP
+  class ICP : public IRegister
   {
   public:
     /******************************************************************************
@@ -61,13 +58,19 @@ namespace tpcl
     /** destructor */
     virtual ~ICP();
 
-    /** update the main point cloud in which registration is searched for, for a secondary point cloud.
-    *   if previous main point cloud was given from outside, that pointer it is forgotten.
-    * @param Xi_pts           point cloud to add to existing main point cloud.
-    * @param Xi_clean         if true deletes all previous information of main point cloud (if previous main point cloud wasn't given from outside) before adding input point cloud.
-    * @param Xi_mainHashed    pointer to an already hashed point cloud. deletes any local main point cloud. expects data to be available whenever registration is called. */
-    void MainPointCloudUpdate(const CPtCloud& Xi_pcl, bool Xi_clean = false);
-    void MainPointCloudUpdate(void* Xi_mainHashed);
+    /** Set main cloud point.
+    * Registration of secondary cloud points are done against this cloud using RegisterCloud()
+    * @param in_pcl           point cloud.
+    * @param in_append        if true, append points to the existing cloud
+    */
+    void SetMainPtCloud(const CPtCloud& in_pcl, bool in_append = false);
+
+    /** Set main cloud point.
+    * Registration of secondary cloud points are done against this cloud using RegisterCloud()
+    * expects data to be available whenever registration is called!
+    * @param in_mainHashed    pointer to an already hashed point cloud. deletes any local main point cloud. expects data to be available whenever registration is called.
+    */
+    void SetMainPtCloud(CSpatialHash2D* Xi_mainHashed);
 
     /** Get hashed main point cloud.
     * return         pointer to hashed main point cloud. */
@@ -77,25 +80,22 @@ namespace tpcl
     * @param Xi_regThresh         registration threshold. */
     void setRegistrationResolution(float Xi_regRes);
 
-    /** Get best ICP registration for a secondary point cloud.
+    /** Get registration for a secondary point cloud against the main cloud
+    * The second cloud is not stored
     * @param Xo_registration      best registration found.
     * @param Xi_pcl               secondary point cloud.
-    * @param Xi_estimatedOrient   estimation of registration, if NULL then estimation is identity.
-    * return                      registration's grade/error - the lower the better. */
-    float SecondaryPointCloudRegistration(CMat4& Xo_registration, const CPtCloud& Xi_pcl, CMat4* Xi_estimatedOrient = NULL);
+    * @param Xi_estimatedOrient   estimation of registration, if 0 then estimation is identity.
+    * @return                     registration's grade/error - the lower the better.
+    */
+    float RegisterCloud(const CPtCloud& Xi_pcl, CMat4& Xo_registration, CMat4* Xi_estimatedOrient = 0);
 
 
   protected:
-    /******************************************************************************
-    *                             Protected members                               *
-    ******************************************************************************/
     CSpatialHash2D* m_mainHashed;   ///< a hashed copy of the main point cloud.
-    bool m_outsourceMainPC;                   ///< if true then hashed main point cloud used if given from outside (and will not be changed).
-    float m_regRes;                        ///< //< resolution of registration wanted.
-                                              /******************************************************************************
-                                              *                             Protected methods                               *
-                                              ******************************************************************************/
-                                              /** Set default values to members. */
+    bool m_outsourceMainPC;         ///< if true then hashed main point cloud used if given from outside (and will not be changed).
+    float m_regRes;                 ///< resolution of registration wanted.
+
+    /** Set default values to members. */
     void initMembers();
   };
 

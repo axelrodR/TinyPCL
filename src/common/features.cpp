@@ -25,9 +25,9 @@
 ******************************************************************************/
 #include "features.h"
 #include <algorithm>
+#include "SpatialHash.h"
 #include "plane.h"
-#include "../../include/vec.h"
-
+#include "../include/ptCloud.h"
 
 
 namespace tpcl
@@ -216,18 +216,18 @@ namespace tpcl
   *: Method name: FindNormal
   *
   ******************************************************************************/
-  void Features::FindNormal(CPtCloud& Xio_pcl, float Xi_radius, CSpatialHash2D* Xi_globalHashed, bool Xi_fixZ)
+  void Features::FillNormals(CPtCloud& io_pcl, float in_radius, CSpatialHash2D* in_pclHash, bool in_fixZ)
   {
     const int bufSize = 100;
-    bool gotHashed = Xi_globalHashed != NULL;
+    bool gotHashed = in_pclHash != NULL;
 
     //if didn't get global hashed point cloud - create one from the point cloud for whoch the normals are found:
     if (!gotHashed)
     {
-      Xi_globalHashed = new CSpatialHash2D;
-      for (int Index = 0; Index < Xio_pcl.m_numPts; Index++)
+      in_pclHash = new CSpatialHash2D;
+      for (int Index = 0; Index < io_pcl.m_numPts; Index++)
       {
-        Xi_globalHashed->Add(Xio_pcl.m_pos[Index], NULL);
+        in_pclHash->Add(io_pcl.m_pos[Index], NULL);
       }
     }
 
@@ -238,36 +238,36 @@ namespace tpcl
     int numOfClose = 0;
 
       #pragma omp for
-      for (int ptIndex = 0; ptIndex < Xio_pcl.m_numPts; ptIndex++)
+      for (int ptIndex = 0; ptIndex < io_pcl.m_numPts; ptIndex++)
       {
-        float radius = Xi_radius * 2;
+        float radius = in_radius * 2;
         //get close points:
 
-        numOfClose = Xi_globalHashed->GetNear(Xio_pcl.m_pos[ptIndex], bufSize, unsuedBuf, closePts, radius);
+        numOfClose = in_pclHash->GetNear(io_pcl.m_pos[ptIndex], bufSize, unsuedBuf, closePts, radius);
 
         //find plane:
         CPlane approxPlane;
         if (approxPlane.RanSaC(numOfClose, closePts, 1.0f) == 0)
-          Xio_pcl.m_normal[ptIndex] = CVec3(0, 0, 1); //TODO: desice what to do if not enoguh points.
+          io_pcl.m_normal[ptIndex] = CVec3(0, 0, 1); //TODO: desice what to do if not enoguh points.
         else
         {
 
           //update point's z:
-          if (Xi_fixZ)
-            Xio_pcl.m_pos[ptIndex].z = approxPlane.GetHeightAt(Xio_pcl.m_pos[ptIndex].x, Xio_pcl.m_pos[ptIndex].y);
+          if (in_fixZ)
+            io_pcl.m_pos[ptIndex].z = approxPlane.GetHeightAt(io_pcl.m_pos[ptIndex].x, io_pcl.m_pos[ptIndex].y);
 
           //get normal and normalize it, up:
-          Xio_pcl.m_normal[ptIndex] = approxPlane.GetNormal();
-          if (Xio_pcl.m_normal[ptIndex].z < 0)
-            Xio_pcl.m_normal[ptIndex].z = -Xio_pcl.m_normal[ptIndex].z;
-          Normalize(Xio_pcl.m_normal[ptIndex]);
+          io_pcl.m_normal[ptIndex] = approxPlane.GetNormal();
+          if (io_pcl.m_normal[ptIndex].z < 0)
+            io_pcl.m_normal[ptIndex].z = -io_pcl.m_normal[ptIndex].z;
+          Normalize(io_pcl.m_normal[ptIndex]);
         }
       }
     }
 
     if (!gotHashed)
     {
-      delete Xi_globalHashed;
+      delete in_pclHash;
     }
   }
 
@@ -278,56 +278,58 @@ namespace tpcl
   *: Method name: DenoiseRangeOfOrderedPointCloud
   *
   ******************************************************************************/
-  void Features::DenoiseRangeOfOrderedPointCloud(const CPtCloud& Xi_pcl, CPtCloud& Xo_pcl, int Xi_medFiltSize0, int Xi_medFiltSize1, float Xi_distFromMedianThresh)
+  void Features::DenoiseRange(const CPtCloud& in_pcl, CPtCloud& out_pcl, int in_windowSize, float in_noiseTh)
   {
-    int numlines = Xi_pcl.m_numPts / Xi_pcl.m_lineWidth;
+    int medFiltSize0 = in_windowSize;
+    int medFiltSize1 = std::max(medFiltSize0 - 2, 1);
+    int numlines = in_pcl.m_numPts / in_pcl.m_lineWidth;
 
     //convert to range image (each pixle in ptsLocal has it's xyz).
-    float* rangeImage = new float[Xi_pcl.m_numPts];
+    float* rangeImage = new float[in_pcl.m_numPts];
     #pragma omp parallel for
-    for (int ptrIndex = 0; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
+    for (int ptrIndex = 0; ptrIndex < in_pcl.m_numPts; ptrIndex++)
     {
-      rangeImage[ptrIndex] = Length(Xi_pcl.m_pos[ptrIndex]);
+      rangeImage[ptrIndex] = Length(in_pcl.m_pos[ptrIndex]);
     }
 
     //find diferent points:
-    float* distFiltered = new float[Xi_pcl.m_numPts];
-    float* threshFiltered = new float[Xi_pcl.m_numPts];
+    float* distFiltered = new float[in_pcl.m_numPts];
+    float* threshFiltered = new float[in_pcl.m_numPts];
 
-    Median2D(Xi_pcl.m_lineWidth, numlines, Xi_medFiltSize0, rangeImage, distFiltered);
+    Median2D(in_pcl.m_lineWidth, numlines, medFiltSize0, rangeImage, distFiltered);
 
 #pragma omp parallel for
     for (int row = 0; row < numlines; row++)
     {
-      for (int col = 0; col < Xi_pcl.m_lineWidth; col++)
+      for (int col = 0; col < in_pcl.m_lineWidth; col++)
       {
-        int index = (row * Xi_pcl.m_lineWidth) + col;
-        distFiltered[index] = (abs(distFiltered[index] - rangeImage[index]) < Xi_distFromMedianThresh) ? 1.0f : 0.0f;
+        int index = (row * in_pcl.m_lineWidth) + col;
+        distFiltered[index] = (abs(distFiltered[index] - rangeImage[index]) < in_noiseTh) ? 1.0f : 0.0f;
       }
     }
 
-    Median2D(Xi_pcl.m_lineWidth, numlines, Xi_medFiltSize1, distFiltered, threshFiltered);
+    Median2D(in_pcl.m_lineWidth, numlines, medFiltSize1, distFiltered, threshFiltered);
 
     int outputSize = 0;
     for (int row = 0; row < numlines; row++)
     {
-      for (int col = 0; col < Xi_pcl.m_lineWidth; col++)
+      for (int col = 0; col < in_pcl.m_lineWidth; col++)
       {
-        int index = (row * Xi_pcl.m_lineWidth) + col;
+        int index = (row * in_pcl.m_lineWidth) + col;
 
         if ((distFiltered[index] == 1) && (threshFiltered[index] == 1))
         {
-          Xo_pcl.m_pos[outputSize] = Xi_pcl.m_pos[index];
-          if ((Xi_pcl.m_color != 0) && (Xo_pcl.m_color != 0))
-            Xo_pcl.m_color[outputSize] = Xi_pcl.m_color[index];
-          if ((Xi_pcl.m_normal != 0) && (Xo_pcl.m_normal != 0))
-            Xo_pcl.m_normal[outputSize] = Xi_pcl.m_normal[index];
+          out_pcl.m_pos[outputSize] = in_pcl.m_pos[index];
+          if ((in_pcl.m_color != 0) && (out_pcl.m_color != 0))
+            out_pcl.m_color[outputSize] = in_pcl.m_color[index];
+          if ((in_pcl.m_normal != 0) && (out_pcl.m_normal != 0))
+            out_pcl.m_normal[outputSize] = in_pcl.m_normal[index];
           outputSize++;
         }
       }
     }
 
-    Xo_pcl.m_numPts = outputSize;
+    out_pcl.m_numPts = outputSize;
 
     delete[] rangeImage;
     delete[] distFiltered;
@@ -354,16 +356,16 @@ namespace tpcl
   *: Method name: DownSamplePointCloud
   *
   ******************************************************************************/
-  void Features::DownSamplePointCloud(const CPtCloud& Xi_pcl, CPtCloud& Xo_pcl, float Xi_voxelSize)
+  void Features::DownSample(const CPtCloud& in_pcl, CPtCloud& out_pcl, float in_voxelSize)
   {
-    float InvVoxelSize = 1.0f / Xi_voxelSize;
+    float InvVoxelSize = 1.0f / in_voxelSize;
 
     //find min/max x/y/z:
-    CVec3 l_bbox[2] = { Xi_pcl.m_pos[0], Xi_pcl.m_pos[0] };
-    for (int ptrIndex = 1; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
+    CVec3 l_bbox[2] = { in_pcl.m_pos[0], in_pcl.m_pos[0] };
+    for (int ptrIndex = 1; ptrIndex < in_pcl.m_numPts; ptrIndex++)
     {
-      l_bbox[0] = Min_ps(l_bbox[0], Xi_pcl.m_pos[ptrIndex]);
-      l_bbox[1] = Max_ps(l_bbox[1], Xi_pcl.m_pos[ptrIndex]);
+      l_bbox[0] = Min_ps(l_bbox[0], in_pcl.m_pos[ptrIndex]);
+      l_bbox[1] = Max_ps(l_bbox[1], in_pcl.m_pos[ptrIndex]);
     }
 
     //create downsampling vector:
@@ -377,11 +379,11 @@ namespace tpcl
     memset(VisitedVoxel, false, Mxyz * sizeof(bool));
 
     int outputSize = 0;
-    for (int ptrIndex = 0; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
+    for (int ptrIndex = 0; ptrIndex < in_pcl.m_numPts; ptrIndex++)
     {
-      float x = Xi_pcl.m_pos[ptrIndex].x;
-      float y = Xi_pcl.m_pos[ptrIndex].y;
-      float z = Xi_pcl.m_pos[ptrIndex].z;
+      float x = in_pcl.m_pos[ptrIndex].x;
+      float y = in_pcl.m_pos[ptrIndex].y;
+      float z = in_pcl.m_pos[ptrIndex].z;
 
       //find point's voxel index:
       int xInd = int(floor((x - l_bbox[0].x) * InvVoxelSize));
@@ -397,11 +399,11 @@ namespace tpcl
       //if we haven't filled this voxel with a point yet, add current point:
       if (!VisitedVoxel[index])
       {
-        Xo_pcl.m_pos[outputSize] = Xi_pcl.m_pos[ptrIndex];
-        if ((Xi_pcl.m_color != 0) && (Xo_pcl.m_color != 0))
-          Xo_pcl.m_color[outputSize] = Xi_pcl.m_color[ptrIndex];
-        if ((Xi_pcl.m_normal != 0) && (Xo_pcl.m_normal != 0))
-          Xo_pcl.m_normal[outputSize] = Xi_pcl.m_normal[ptrIndex];
+        out_pcl.m_pos[outputSize] = in_pcl.m_pos[ptrIndex];
+        if ((in_pcl.m_color != 0) && (out_pcl.m_color != 0))
+          out_pcl.m_color[outputSize] = in_pcl.m_color[ptrIndex];
+        if ((in_pcl.m_normal != 0) && (out_pcl.m_normal != 0))
+          out_pcl.m_normal[outputSize] = in_pcl.m_normal[ptrIndex];
         outputSize++;
 
         VisitedVoxel[index] = true;
@@ -409,7 +411,7 @@ namespace tpcl
     }
     delete[] VisitedVoxel;
 
-    Xo_pcl.m_numPts = outputSize;
+    out_pcl.m_numPts = outputSize;
   }
 
 

@@ -29,7 +29,6 @@
 #include "features.h"
 #include "RegICP.h"
 #include "SpatialHash.h"
-#include "../../include/vec.h"
 #include <complex>
 #include "tran.h"
 #include "common.h"
@@ -149,18 +148,19 @@ namespace tpcl
   *: Method name: MainPointCloudUpdate
   *
   ******************************************************************************/
-  void CCoarseRegister::MainPointCloudUpdate(const CPtCloud& Xi_pcl, bool Xi_clean)
+  void CCoarseRegister::SetMainPtCloud(const CPtCloud& in_pcl, bool in_append)
   {
     CRegOptions* optsP = (CRegOptions*)m_opts;
     CRegDictionary* dictionaryP = (CRegDictionary*)m_dictionary;
+    Features feat;
 
     //preprocess main cloud:
     CPtCloud ptsMain; ptsMain.m_type = PCL_TYPE_FUSED; ptsMain.m_color = NULL; ptsMain.m_normal = NULL;
-    ptsMain.m_numPts = Xi_pcl.m_numPts; ptsMain.m_pos = new CVec3[Xi_pcl.m_numPts];
+    ptsMain.m_numPts = in_pcl.m_numPts; ptsMain.m_pos = new CVec3[in_pcl.m_numPts];
 
-    Features::DownSamplePointCloud(Xi_pcl, ptsMain, optsP->m_voxelSizeGlobal);
+    feat.DownSample(in_pcl, ptsMain, optsP->m_voxelSizeGlobal);
 
-    if (Xi_clean)
+    if (!in_append)
       dictionaryP->ResetDictionary();
 
     //create grid's position and orientation: 
@@ -186,9 +186,10 @@ namespace tpcl
   *: Method name: SecondaryPointCloudRegistration
   *
   ******************************************************************************/
-  float CCoarseRegister::SecondaryPointCloudRegistration(CMat4& Xo_registration, const CPtCloud& Xi_pcl, CMat4* Xi_estimatedOrient)
+  float CCoarseRegister::RegisterCloud(const CPtCloud& Xi_pcl, CMat4& Xo_registration, CMat4* Xi_estimatedOrient)
   {
     const int maxCandidates = 10;
+    Features feat;
 
     float grades[maxCandidates];
     CMat4 candRegistrations[maxCandidates];
@@ -200,8 +201,8 @@ namespace tpcl
     //preprocess local cloud:
     //if (Xi_pcl.m_type == PCL_TYPE_SINGLE_ORIGIN_SCAN)
     //{
-      int lineHeight = Xi_pcl.m_numPts / Xi_pcl.m_lineWidth;
-      Features::DenoiseRangeOfOrderedPointCloud(Xi_pcl, ptsPrePro, optsP->m_medFiltSize0, optsP->m_medFiltSize1, optsP->m_distFromMedianThresh);
+      //int lineHeight = Xi_pcl.m_numPts / Xi_pcl.m_lineWidth;
+      feat.DenoiseRange(Xi_pcl, ptsPrePro, optsP->m_medFiltSize0, optsP->m_distFromMedianThresh);
     //}
     //else
     //{
@@ -209,10 +210,12 @@ namespace tpcl
     //  Features::DenoiseRangeOfPointCloud(Xi_pcl, ptsPrePro, optsP->m_medFiltSize0, optsP->m_medFiltSize1, optsP->m_distFromMedianThresh, res);
     //}
 
-    Features::DownSamplePointCloud(ptsPrePro, ptsPrePro, optsP->m_voxelSizeLocal);
+    feat.DownSample(ptsPrePro, ptsPrePro, optsP->m_voxelSizeLocal);
 
     //get registration candidates from dictinary:
     int NumOfCandidates = SecondaryPointCloudRegistrationCandidates(ptsPrePro, maxCandidates, grades, candRegistrations, Xi_estimatedOrient);
+
+    feat.DownSample(ptsPrePro, ptsPrePro, 2);
 
     //find final registration:
     float bestGrade = GetRegistrationFromListOfCandidates(NumOfCandidates, ptsPrePro, candRegistrations, Xo_registration);
@@ -239,9 +242,29 @@ namespace tpcl
     CRegDictionary* dictionaryP = (CRegDictionary*)m_dictionary;
     int* candidates = new int[Xi_maxCandidates];
 
+    //pick points in range:
+    CPtCloud ptsInRange;
+    ptsInRange.m_pos = new CVec3[Xi_pcl.m_numPts];
+    int num = 0;
+    float rMinSqr = optsP->m_r_min*optsP->m_r_min;
+    float rMaxSqr = optsP->m_r_max*optsP->m_r_max;
+
+    for (int Index = 0; Index < Xi_pcl.m_numPts; Index++)
+    {
+      float rQsr = LengthSqr(Xi_pcl.m_pos[Index]);
+      if (rQsr < rMinSqr)
+        continue;
+      if (rQsr > rMaxSqr)
+        continue;
+
+      ptsInRange.m_pos[num] = Xi_pcl.m_pos[Index];
+      num++;
+    }
+    ptsInRange.m_numPts = num;
+
     //create range image:
     float* descriptor = new float[optsP->m_lineWidth * optsP->m_numlines];
-    dictionaryP->PCL2descriptor(Xi_pcl, descriptor);
+    dictionaryP->PCL2descriptor(ptsInRange, descriptor);
 
     
     #ifdef DEBUG_LOCAL_RANGE_IMAGE //DEBUG
@@ -286,14 +309,14 @@ namespace tpcl
   float CCoarseRegister::GetRegistrationFromListOfCandidates(int Xi_NumOfCandidates, const CPtCloud& Xi_pcl, CMat4* Xi_registrations, CMat4& Xo_registration)
   {
     CRegOptions* optsP = (CRegOptions*)m_opts;
-
+    Features feat;
 
     //stay with candidates of minimum RMSE:
     float* CandRMSEs = new float[Xi_NumOfCandidates];
     #pragma omp parallel for
     for (int cand = 0; cand < Xi_NumOfCandidates; cand++)
     {
-      CandRMSEs[cand] = Features::RMSEofRegistration((CSpatialHash2D*)(getMainHashedPtr()), Xi_pcl, 4 * optsP->m_voxelSizeGlobal, Xi_registrations[cand]);
+      CandRMSEs[cand] = feat.RMSEofRegistration((CSpatialHash2D*)(getMainHashedPtr()), Xi_pcl, 4 * optsP->m_voxelSizeGlobal, Xi_registrations[cand]);
     }
 
     //TODO: finish RMSE candidate filter
@@ -314,13 +337,13 @@ namespace tpcl
 
     ////select best registration of candidates according to ICP registration:
     ICP icpRegistration(1.5f * optsP->m_voxelSizeGlobal);
-    icpRegistration.MainPointCloudUpdate(getMainHashedPtr());
+    icpRegistration.SetMainPtCloud((CSpatialHash2D*)getMainHashedPtr());
     double bestGrade = DBL_MAX;
     for (int fCand = 0; fCand < fNumOfCand; fCand++)
     {
       int cand = finalCandidates[fCand];
       CMat4 l_icpReg;
-      double grade = icpRegistration.SecondaryPointCloudRegistration(l_icpReg, Xi_pcl, Xi_registrations + cand);
+      double grade = icpRegistration.RegisterCloud(Xi_pcl, l_icpReg, Xi_registrations + cand);
       if (grade < bestGrade)
       {
         bestGrade = grade;
@@ -329,7 +352,7 @@ namespace tpcl
     }
 
     icpRegistration.setRegistrationResolution(0.5f*optsP->m_voxelSizeGlobal);
-    icpRegistration.SecondaryPointCloudRegistration(Xo_registration, Xi_pcl, &Xo_registration);
+    icpRegistration.RegisterCloud(Xi_pcl, Xo_registration, &Xo_registration);
 
     delete[] CandRMSEs;
 
@@ -354,8 +377,8 @@ namespace tpcl
   void CRegOptions::SetDefaults()
   {
     float m_scale = 1.0f;
-    m_voxelSizeGlobal = 2;// 0.5;
-    m_voxelSizeLocal = 2;// 0.25;
+    m_voxelSizeGlobal = 0.5;
+    m_voxelSizeLocal = 0.25;
     m_d_grid = 3;                   
     m_d_sensor = 2;                 
     m_lineWidth = 128;              
