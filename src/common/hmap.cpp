@@ -239,10 +239,10 @@ static void DividePoly(const CVertexUV* in, int nin,
 
 
 /** find the best height resolution to fit the box and spatial resolution */
-float FindBestHeightResolution(float xi_minZ, float Xi_maxZ, float Xi_xyRes)
+float FindBestHeightResolution(float xi_minZ, float in_maxZ, float in_xyRes)
 {
-  float l_diff = Xi_maxZ - xi_minZ;   // the entire height range should use 16bits
-  float l_stdDiff = Xi_xyRes * 20.0f;   // heights several times larger than the x-y resolution should settle nicely in 8bits
+  float l_diff = in_maxZ - xi_minZ;   // the entire height range should use 16bits
+  float l_stdDiff = in_xyRes * 20.0f;   // heights several times larger than the x-y resolution should settle nicely in 8bits
   for (float l_scale = 0.001f ; l_scale<1000.0f; l_scale*=1.5f)
   {
     float l_maxDiff = l_scale * (float)((1<<CDynamicHeightMap::SPAN_HEIGHT_BITS) -1);
@@ -268,8 +268,8 @@ float FindBestHeightResolution(float xi_minZ, float Xi_maxZ, float Xi_xyRes)
 ******************************************************************************/
 
 
-CSimpleHgtMap::CSimpleHgtMap(int Xi_width, int Xi_height, const CVec3& Xi_bbmin, float Xi_res)
-  : CGrid2D<unsigned short>(Xi_width, Xi_height, Xi_bbmin, Xi_res)
+CSimpleHgtMap::CSimpleHgtMap(int in_width, int in_height, const CVec3& in_bbmin, float in_res)
+  : CGrid2D<unsigned short>(in_width, in_height, in_bbmin, in_res)
 {
   m_resH = 0.01f;
   m_invResH = 1.0f/m_resH;
@@ -279,11 +279,11 @@ CSimpleHgtMap::CSimpleHgtMap(int Xi_width, int Xi_height, const CVec3& Xi_bbmin,
 }
 
 
-CSimpleHgtMap::CSimpleHgtMap(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res)
-  : CGrid2D<unsigned short>(Xi_bbMin, Xi_bbMax, Xi_res)
+CSimpleHgtMap::CSimpleHgtMap(const CVec3& in_bbMin, const CVec3& in_bbMax, float in_res)
+  : CGrid2D<unsigned short>(in_bbMin, in_bbMax, in_res)
 {
   // some automatic setup to fit the scale of the problem. The user should use SetHeightRes() to override
-  m_resH = FindBestHeightResolution(Xi_bbMin.z, Xi_bbMax.z, Xi_res);
+  m_resH = FindBestHeightResolution(in_bbMin.z, in_bbMax.z, in_res);
   m_invResH = 1.0f/m_resH;
   // creation of parent failed?
   if (m_data != 0)
@@ -295,17 +295,17 @@ CSimpleHgtMap::~CSimpleHgtMap()
 }
 
     
-bool CSimpleHgtMap::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_info)
+bool CSimpleHgtMap::U_RasterizeTri(const CVec3& in_v0, const CVec3& in_v1, const CVec3& in_v2, int in_info)
 {
-  CVertexUV l_v0(Xi_v0, CVec3(0,0, 0));
-  CVertexUV l_v1(Xi_v1, CVec3(1,0, 0));
-  CVertexUV l_v2(Xi_v2, CVec3(1,1, 0));
-  return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&Xi_info);
+  CVertexUV l_v0(in_v0, CVec3(0,0, 0));
+  CVertexUV l_v1(in_v1, CVec3(1,0, 0));
+  CVertexUV l_v2(in_v2, CVec3(1,1, 0));
+  return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&in_info);
 }
 
 
-bool  CSimpleHgtMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_v1, const CVertexUV& Xi_v2,
-                                    int /*Xi_imgWidth*/, int /*Xi_imgHeight*/, const unsigned int* /*Xi_img*/)
+bool  CSimpleHgtMap::U_RasterizeTri(const CVertexUV& in_v0, const CVertexUV& in_v1, const CVertexUV& in_v2,
+                                    int /*in_imgWidth*/, int /*in_imgHeight*/, const unsigned int* /*in_img*/)
 {
   const int w = GetWidth();
   const int h = GetHeight();
@@ -318,12 +318,12 @@ bool  CSimpleHgtMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_
   const float bz = m_bbMax.z - m_bbMin.z;
 
   // Calculate the bounding box of the triangle.
-  tmin = Xi_v0.m_vtx;
-  tmax = Xi_v0.m_vtx;
-  tmin = Min_ps(tmin, Xi_v1.m_vtx);
-  tmin = Min_ps(tmin, Xi_v2.m_vtx);
-  tmax = Max_ps(tmax, Xi_v1.m_vtx);
-  tmax = Max_ps(tmax, Xi_v2.m_vtx);
+  tmin = in_v0.m_vtx;
+  tmax = in_v0.m_vtx;
+  tmin = Min_ps(tmin, in_v1.m_vtx);
+  tmin = Min_ps(tmin, in_v2.m_vtx);
+  tmax = Max_ps(tmax, in_v1.m_vtx);
+  tmax = Max_ps(tmax, in_v2.m_vtx);
 
   // If the triangle does not touch the bbox of the heightfield, skip the triagle.
   if (!overlapBounds(m_bbMin, m_bbMax, tmin, tmax))
@@ -339,9 +339,9 @@ bool  CSimpleHgtMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_
   CVec3 buf[7*4];
   CVec3 *in = buf, *inrow = buf+7, *p1 = inrow+7, *p2 = p1+7;
   
-  in[0] = Xi_v0.m_vtx;
-  in[1] = Xi_v1.m_vtx;
-  in[2] = Xi_v2.m_vtx;
+  in[0] = in_v0.m_vtx;
+  in[1] = in_v1.m_vtx;
+  in[2] = in_v2.m_vtx;
   int nvrow, nvIn = 3;
 
   for (int y = y0; y <= y1; ++y)
@@ -444,17 +444,17 @@ const CMesh* CSimpleHgtMap::U_GetMesh()
 
 
 
-void CSimpleHgtMap::U_GetBBox(CVec3& Xo_min, CVec3& Xo_max) const
+void CSimpleHgtMap::U_GetBBox(CVec3& out_min, CVec3& out_max) const
 {
-  Xo_min = m_bbMin;
-  Xo_max = m_bbMax;
+  out_min = m_bbMin;
+  out_max = m_bbMax;
 }
 
 
 static unsigned int s_singlePixel = 0xffffffff;
-const unsigned int* CSimpleHgtMap::U_GetTexture(int& Xo_texWidth, int& Xo_texHeight)
+const unsigned int* CSimpleHgtMap::U_GetTexture(int& out_texWidth, int& out_texHeight)
 {
-  Xo_texWidth = Xo_texHeight = 1;
+  out_texWidth = out_texHeight = 1;
   return &s_singlePixel;
 }
 
@@ -475,8 +475,8 @@ const unsigned int* CSimpleHgtMap::U_GetTexture(int& Xo_texWidth, int& Xo_texHei
 *: Method name: CDynamicHeightMap
 *
 ******************************************************************************/
-CDynamicHeightMap::CDynamicHeightMap(int Xi_width, int Xi_height, const CVec3& Xi_bbmin, float Xi_res)
-  : CGrid2dBase(Xi_width, Xi_height, Xi_bbmin, Xi_res, sizeof(CSpan*))
+CDynamicHeightMap::CDynamicHeightMap(int in_width, int in_height, const CVec3& in_bbmin, float in_res)
+  : CGrid2dBase(in_width, in_height, in_bbmin, in_res, sizeof(CSpan*))
 {
   m_freeList = 0;
   m_pools = 0;
@@ -489,15 +489,15 @@ CDynamicHeightMap::CDynamicHeightMap(int Xi_width, int Xi_height, const CVec3& X
 }
 
 
-CDynamicHeightMap::CDynamicHeightMap(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res)
-  : CGrid2dBase(Xi_bbMin, Xi_bbMax, Xi_res, sizeof(CSpan*))
+CDynamicHeightMap::CDynamicHeightMap(const CVec3& in_bbMin, const CVec3& in_bbMax, float in_res)
+  : CGrid2dBase(in_bbMin, in_bbMax, in_res, sizeof(CSpan*))
 {
   m_freeList = 0;
   m_pools = 0;
   m_spanCount = 0;
   
   // some automatic setup to fit the scale of the problem. THe user should use SetHeightRes() to override
-  m_resH = FindBestHeightResolution(Xi_bbMin.z, Xi_bbMax.z, Xi_res);
+  m_resH = FindBestHeightResolution(in_bbMin.z, in_bbMax.z, in_res);
   m_invResH = 1.0f/m_resH;
   m_hasColorInfo = false;
 
@@ -559,28 +559,28 @@ CDynamicHeightMap::CSpan* CDynamicHeightMap::AllocSpan()
 }
 
     
-void CDynamicHeightMap::FreeSpan(CSpan* Xi_pSpan)
+void CDynamicHeightMap::FreeSpan(CSpan* in_pSpan)
 {
-  if (!Xi_pSpan) return;
+  if (!in_pSpan) return;
   // Add the node in front of the free list.
-  Xi_pSpan->m_next = m_freeList;
-  m_freeList = Xi_pSpan;
+  in_pSpan->m_next = m_freeList;
+  m_freeList = in_pSpan;
 }
 
 
 // average feilds in a bitfelid
 #define AVG(x, y, mask)    ( ((x&mask)+(y&mask)) >> 1 ) & mask
 
-bool CDynamicHeightMap::AddSpan(int Xi_x, int Xi_y, int Xi_hBegin, int Xi_hEnd, int Xi_area, int facing, int Xi_mergeThr)
+bool CDynamicHeightMap::AddSpan(int in_x, int in_y, int in_hBegin, int in_hEnd, int in_area, int facing, int in_mergeThr)
 {
-  int idx = GetIndex(Xi_x,Xi_y);
+  int idx = GetIndex(in_x,in_y);
   
   CSpan* l_s = AllocSpan();
   if (!l_s)
     return false;
-  l_s->smin = (unsigned short)Xi_hBegin;
-  l_s->smax = (unsigned short)Xi_hEnd;
-  l_s->info = Xi_area;
+  l_s->smin = (unsigned short)in_hBegin;
+  l_s->smax = (unsigned short)in_hEnd;
+  l_s->info = in_area;
   l_s->facing = facing;
   l_s->m_next = 0;
 
@@ -616,7 +616,7 @@ bool CDynamicHeightMap::AddSpan(int Xi_x, int Xi_y, int Xi_hBegin, int Xi_hEnd, 
         l_s->smin = l_cur->smin;
       if (l_cur->smax > l_s->smax)
       {
-        if (l_cur->smax - l_s->smax <= Xi_mergeThr)
+        if (l_cur->smax - l_s->smax <= in_mergeThr)
         {
           if (!m_hasColorInfo)
             l_s->info = MaxT(l_s->info, l_cur->info);
@@ -636,7 +636,7 @@ bool CDynamicHeightMap::AddSpan(int Xi_x, int Xi_y, int Xi_hBegin, int Xi_hEnd, 
       }
       else // l_cur->smax <= l_s->smax
       {
-        if (l_s->smax - l_cur->smax <= Xi_mergeThr)
+        if (l_s->smax - l_cur->smax <= in_mergeThr)
         {
           if (!m_hasColorInfo)
             l_s->info = MaxT(l_s->info, l_cur->info);
@@ -690,12 +690,12 @@ bool CDynamicHeightMap::AddSpan(int Xi_x, int Xi_y, int Xi_hBegin, int Xi_hEnd, 
 * a variation of Recast/Detour's rcHeightfield.
 * see: https://github.com/recastnavigation/recastnavigation
 ******************************************************************************/
-bool CDynamicHeightMap::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_area)
+bool CDynamicHeightMap::U_RasterizeTri(const CVec3& in_v0, const CVec3& in_v1, const CVec3& in_v2, int in_area)
 {
-  CVertexUV l_v0(Xi_v0,CVec3(0,0, 0));
-  CVertexUV l_v1(Xi_v1,CVec3(1,0, 0));
-  CVertexUV l_v2(Xi_v2,CVec3(1,1, 0));
-  return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&Xi_area);
+  CVertexUV l_v0(in_v0,CVec3(0,0, 0));
+  CVertexUV l_v1(in_v1,CVec3(1,0, 0));
+  CVertexUV l_v2(in_v2,CVec3(1,1, 0));
+  return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&in_area);
 }
 
 
@@ -706,8 +706,8 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, c
 * a variation of Recast/Detour's rcHeightfield.
 * see: https://github.com/recastnavigation/recastnavigation
 ******************************************************************************/
-bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_v1, const CVertexUV& Xi_v2,
-                                     int Xi_imgWidth, int Xi_imgHeight, const unsigned int* Xi_img)
+bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& in_v0, const CVertexUV& in_v1, const CVertexUV& in_v2,
+                                     int in_imgWidth, int in_imgHeight, const unsigned int* in_img)
 {
   const int w = GetWidth();
   const int h = GetHeight();
@@ -717,25 +717,25 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& 
   const float ich = GetInvHeightRes();
   CVec3 tmin, tmax;
   const float bz = m_bbMax.z - m_bbMin.z;
-  const float l_imgW = (float)Xi_imgWidth;
-  const float l_imgH = (float)Xi_imgHeight;
+  const float l_imgW = (float)in_imgWidth;
+  const float l_imgH = (float)in_imgHeight;
   m_hasColorInfo = true;
 
   // Calculate the bounding box of the triangle.
-  tmin = Xi_v0.m_vtx;
-  tmax = Xi_v0.m_vtx;
-  tmin = Min_ps(tmin, Xi_v1.m_vtx);
-  tmin = Min_ps(tmin, Xi_v2.m_vtx);
-  tmax = Max_ps(tmax, Xi_v1.m_vtx);
-  tmax = Max_ps(tmax, Xi_v2.m_vtx);
+  tmin = in_v0.m_vtx;
+  tmax = in_v0.m_vtx;
+  tmin = Min_ps(tmin, in_v1.m_vtx);
+  tmin = Min_ps(tmin, in_v2.m_vtx);
+  tmax = Max_ps(tmax, in_v1.m_vtx);
+  tmax = Max_ps(tmax, in_v2.m_vtx);
 
   // If the triangle does not touch the bbox of the heightfield, skip the triagle.
   if (!overlapBounds(m_bbMin, m_bbMax, tmin, tmax))
     return true;
 
   // claculate the front facing / back facing
-  CVec3 e1 = Xi_v1.m_vtx - Xi_v0.m_vtx;
-  CVec3 e2 = Xi_v2.m_vtx - Xi_v0.m_vtx;
+  CVec3 e1 = in_v1.m_vtx - in_v0.m_vtx;
+  CVec3 e2 = in_v2.m_vtx - in_v0.m_vtx;
   float crossZ = e1.x*e2.y - e2.x*e1.y;
   int backFace = crossZ < 0.0f ? 1 : 0;
 
@@ -749,9 +749,9 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& 
   CVertexUV buf[7*4];
   CVertexUV *in = buf, *inrow = buf+7, *p1 = inrow+7, *p2 = p1+7;
   
-  in[0] = Xi_v0;
-  in[1] = Xi_v1;
-  in[2] = Xi_v2;
+  in[0] = in_v0;
+  in[1] = in_v1;
+  in[2] = in_v2;
   int nvrow, nvIn = 3;
 
   for (int y = y0; y <= y1; ++y)
@@ -806,10 +806,10 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& 
 
       // color from the center of the cell
       const float l_dcx = (float)(1.0/ 3.0);
-      CVec3 l_cen = p1[0].m_uv; // (Xi_v0.m_uv + Xi_v1.m_uv + Xi_v2.m_uv) * l_dcx;
+      CVec3 l_cen = p1[0].m_uv; // (in_v0.m_uv + in_v1.m_uv + in_v2.m_uv) * l_dcx;
       int l_cenx = int(l_cen.x * l_imgW);
       int l_ceny = int(l_cen.y * l_imgH);
-      int l_area = Xi_img[l_cenx + l_ceny * Xi_imgWidth];
+      int l_area = in_img[l_cenx + l_ceny * in_imgWidth];
       if (l_area == NULL_INFO)
         l_area = 1;
 
@@ -832,8 +832,8 @@ bool CDynamicHeightMap::U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& 
 
 
 /** construct from a dynamic height map */
-CCompactHeightMap::CCompactHeightMap(const CDynamicHeightMap& Xi_dynHmap, float Xi_walkableHeight, float Xi_walkableClimb, bool Xi_backCull)
-  : CGrid2D<CCompactCell>(Xi_dynHmap.GetWidth(), Xi_dynHmap.GetHeight(), Xi_dynHmap.GetBBoxMin(), Xi_dynHmap.GetRes())
+CCompactHeightMap::CCompactHeightMap(const CDynamicHeightMap& in_dynHmap, float in_walkableHeight, float in_walkableClimb, bool in_backCull)
+  : CGrid2D<CCompactCell>(in_dynHmap.GetWidth(), in_dynHmap.GetHeight(), in_dynHmap.GetBBoxMin(), in_dynHmap.GetRes())
 {
   // creation of parent failed?
   if (m_data == 0)
@@ -846,15 +846,15 @@ CCompactHeightMap::CCompactHeightMap(const CDynamicHeightMap& Xi_dynHmap, float 
   const int w = m_width;
   const int h = m_height;
   const int NOT_CONNECTED = CCompactSpan::NOT_CONNECTED;
-  m_resH = Xi_dynHmap.GetHeightRes();
+  m_resH = in_dynHmap.GetHeightRes();
   m_invResH = 1.0f / m_resH;
 
-  m_bbMax = Xi_dynHmap.GetBBoxMax();
-  m_spanCount = Xi_dynHmap.GetSpanCount();
+  m_bbMax = in_dynHmap.GetBBoxMax();
+  m_spanCount = in_dynHmap.GetSpanCount();
   m_spans = new CCompactSpan[m_spanCount];
   m_areas = new unsigned char[m_spanCount];
-  m_colors = Xi_dynHmap.HasColorInfo() ? new unsigned short[m_spanCount] : 0;
-  bool l_colorCreationFailed = Xi_dynHmap.HasColorInfo() ? (m_colors==0) : false;
+  m_colors = in_dynHmap.HasColorInfo() ? new unsigned short[m_spanCount] : 0;
+  bool l_colorCreationFailed = in_dynHmap.HasColorInfo() ? (m_colors==0) : false;
   if ( !m_spans || !m_areas || l_colorCreationFailed )
   {
     Log("Could not create compact height map size %d x %d. Out of memory?\n", m_width, m_height);
@@ -875,7 +875,7 @@ CCompactHeightMap::CCompactHeightMap(const CDynamicHeightMap& Xi_dynHmap, float 
   {
     for (int x = 0; x < w; ++x)
     {
-      const CDynamicHeightMap::CSpan* s = Xi_dynHmap.Get(x,y);
+      const CDynamicHeightMap::CSpan* s = in_dynHmap.Get(x,y);
       // If there are no spans at this cell, just leave the data to index=0, count=0.
       if (!s) continue;
       CCompactCell& c = cells[x+y*w];
@@ -889,7 +889,7 @@ CCompactHeightMap::CCompactHeightMap(const CDynamicHeightMap& Xi_dynHmap, float 
           lastTop = (int)s->smax;
           continue;
         }
-        if (Xi_backCull && s->facing==1)
+        if (in_backCull && s->facing==1)
         {
           lastTop = (int)s->smax;
           continue;
@@ -928,12 +928,12 @@ CCompactHeightMap::CCompactHeightMap(const CDynamicHeightMap& Xi_dynHmap, float 
     }
   }
 
-  ComputeSurfaces(Xi_walkableHeight, Xi_walkableClimb);
+  ComputeSurfaces(in_walkableHeight, in_walkableClimb);
   Log("Created compact height map size %d x %d.\n", m_width, m_height);
 }
 
 
-void CCompactHeightMap::ComputeSurfaces(float Xi_walkableHeight, float Xi_walkableClimb)
+void CCompactHeightMap::ComputeSurfaces(float in_walkableHeight, float in_walkableClimb)
 {
   const int w = m_width;
   const int h = m_height;
@@ -941,8 +941,8 @@ void CCompactHeightMap::ComputeSurfaces(float Xi_walkableHeight, float Xi_walkab
   CCompactCell* cells = (CCompactCell*)m_data;
 
   // TODO: move this outside
-  int walkableClimb = (int)(Xi_walkableClimb * m_invResH);
-  int walkableHeight = (int)(Xi_walkableHeight * m_invResH);
+  int walkableClimb = (int)(in_walkableClimb * m_invResH);
+  int walkableHeight = (int)(in_walkableHeight * m_invResH);
 
 
   // build surfaces by finding neighbour connections.
@@ -1020,26 +1020,26 @@ CCompactHeightMap::~CCompactHeightMap()
 
 
 
-int CCompactHeightMap::GetHeightAt(const CVec3& Xi_pos, int Xi_bufSize, float* Xo_heights) const
+int CCompactHeightMap::GetHeightAt(const CVec3& in_pos, int in_bufSize, float* out_heights) const
 {
-  CCompactCell l_cell = Get(Xi_pos);
+  CCompactCell l_cell = Get(in_pos);
   int l_n = 0;
   for (int i=l_cell.index+l_cell.count-1, ni=l_cell.index; i>=ni; --i)
   {
-    if (l_n >= Xi_bufSize)
+    if (l_n >= in_bufSize)
       break;
     CCompactSpan& l_span = m_spans[i];
     float z = l_span.y * m_resH + m_bbMin.z;
-    Xo_heights[l_n++] = z;
+    out_heights[l_n++] = z;
   }
   return l_n;
 }
 
 
 
-int CCompactHeightMap::GetTopSpanId(const CVec3& Xi_pos) const
+int CCompactHeightMap::GetTopSpanId(const CVec3& in_pos) const
 {
-  CCompactCell l_cell = Get(Xi_pos);
+  CCompactCell l_cell = Get(in_pos);
   if (l_cell.count == 0)
     return -1;
   return l_cell.index + l_cell.count - 1;

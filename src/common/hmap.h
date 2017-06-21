@@ -78,31 +78,31 @@ namespace tpcl
     void SetHeightRes(float res)                {m_resH = res; m_invRes=1.0f/res;} ///< set resolution
 
     /** Get height */
-    float GetZ(int Xi_x, int Xi_y)  const       {return Get(Xi_x,Xi_y) * m_resH + m_bbMin.z;}
-    float GetZ(CVec3& Xi_pos) const       {return Get(Xi_pos) * m_resH + m_bbMin.z;}
-    void SetZ(int Xi_x,int Xi_y,float Xi_h)     {Get(Xi_x,Xi_y) = unsigned short((Xi_h-m_bbMin.z)*m_invResH);}      ///< set height
+    float GetZ(int in_x, int in_y)  const       {return Get(in_x,in_y) * m_resH + m_bbMin.z;}
+    float GetZ(CVec3& in_pos) const       {return Get(in_pos) * m_resH + m_bbMin.z;}
+    void SetZ(int in_x,int in_y,float in_h)     {Get(in_x,in_y) = unsigned short((in_h-m_bbMin.z)*m_invResH);}      ///< set height
 
     /** get the world position associated with a cell coordinates (corner of a cell) */
-    inline CVec3 GetPos(int Xi_x, int Xi_y) const;
+    inline CVec3 GetPos(int in_x, int in_y) const;
 
     /** Rasterize a triangle height to the map
-     * @param Xi_info  not used */
-    bool U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_info);
+     * @param in_info  not used */
+    bool U_RasterizeTri(const CVec3& in_v0, const CVec3& in_v1, const CVec3& in_v2, int in_info);
 
     /** Rasterize a triangle height and info/color
-     * @param Xi_info  not used */
-    bool U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_v1, const CVertexUV& Xi_v2,
-                        int Xi_imgWidth, int Xi_imgHeight, const unsigned int* Xi_img);
+     * @param in_info  not used */
+    bool U_RasterizeTri(const CVertexUV& in_v0, const CVertexUV& in_v1, const CVertexUV& in_v2,
+                        int in_imgWidth, int in_imgHeight, const unsigned int* in_img);
 
     // inhertied from IRasterizable
     /** Get vertices with texture */
     virtual const CMesh* U_GetMesh();
-    virtual void U_GetBBox(CVec3& Xo_min, CVec3& Xo_max) const;
-    virtual const unsigned int* U_GetTexture(int& Xo_texWidth, int& Xo_texHeight);
+    virtual void U_GetBBox(CVec3& out_min, CVec3& out_max) const;
+    virtual const unsigned int* U_GetTexture(int& out_texWidth, int& out_texHeight);
 
     /** constructors */
-    CSimpleHgtMap(int Xi_width, int Xi_height, const CVec3& Xi_bbmin, float Xi_res=1.0f);
-    CSimpleHgtMap(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res=1.0f);
+    CSimpleHgtMap(int in_width, int in_height, const CVec3& in_bbmin, float in_res=1.0f);
+    CSimpleHgtMap(const CVec3& in_bbMin, const CVec3& in_bbMax, float in_res=1.0f);
     
     /** destructor */
     virtual ~CSimpleHgtMap();
@@ -137,15 +137,15 @@ namespace tpcl
     };
 
     /** Convert height into world coordinates */
-    float GetSpanHeight(CSpan& Xi_span)             {return Xi_span.smax * m_resH + m_bbMin.z;}
+    float GetSpanHeight(CSpan& in_span)             {return in_span.smax * m_resH + m_bbMin.z;}
 
     // wrapper to access spans
-    CSpan* Get(int Xi_x, int Xi_y)                  {return *(CSpan**)CGrid2dBase::Get(Xi_x,Xi_y);}    ///< the first span using cell coordinates
-    CSpan* Get(int Xi_ind)                          {return *(CSpan**)CGrid2dBase::Get(Xi_ind);}       ///< the first span using an index
-    CSpan* Get(const CVec3& Xi_pos)           {return *(CSpan**)CGrid2dBase::Get(Xi_pos);}       ///< get first span using a world pos
-    const CSpan* Get(int Xi_x, int Xi_y) const      {return *(CSpan**)CGrid2dBase::Get(Xi_x,Xi_y);}    ///< the first span using cell coordinates
-    const CSpan* Get(int Xi_ind) const              {return *(CSpan**)CGrid2dBase::Get(Xi_ind);}       ///< the first span using an index
-    const CSpan* Get(const CVec3& Xi_pos) const {return *(CSpan**)CGrid2dBase::Get(Xi_pos);}       ///< get first span using a world pos
+    CSpan* Get(int in_x, int in_y)                  {return *(CSpan**)CGrid2dBase::Get(in_x,in_y);}    ///< the first span using cell coordinates
+    CSpan* Get(int in_ind)                          {return *(CSpan**)CGrid2dBase::Get(in_ind);}       ///< the first span using an index
+    CSpan* Get(const CVec3& in_pos)           {return *(CSpan**)CGrid2dBase::Get(in_pos);}       ///< get first span using a world pos
+    const CSpan* Get(int in_x, int in_y) const      {return *(CSpan**)CGrid2dBase::Get(in_x,in_y);}    ///< the first span using cell coordinates
+    const CSpan* Get(int in_ind) const              {return *(CSpan**)CGrid2dBase::Get(in_ind);}       ///< the first span using an index
+    const CSpan* Get(const CVec3& in_pos) const {return *(CSpan**)CGrid2dBase::Get(in_pos);}       ///< get first span using a world pos
 
     // height resolution
     float GetHeightRes() const                      {return m_resH;}       ///< get resolution
@@ -156,19 +156,19 @@ namespace tpcl
     int GetSpanCount()  const                       {return m_spanCount;} 
 
     /** Rasterize a triangle into a dynamic height map (rasterization buffer) */
-    bool U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_area);
+    bool U_RasterizeTri(const CVec3& in_v0, const CVec3& in_v1, const CVec3& in_v2, int in_area);
 
     /** @brief Rasterize a triangle with texture into a dynamic height map (rasterization buffer)
-     * @param Xi_img default: RGB + area (byte) in the alpha channel */
-    bool U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_v1, const CVertexUV& Xi_v2,
-                        int Xi_imgWidth, int Xi_imgHeight, const unsigned int* Xi_img);
+     * @param in_img default: RGB + area (byte) in the alpha channel */
+    bool U_RasterizeTri(const CVertexUV& in_v0, const CVertexUV& in_v1, const CVertexUV& in_v2,
+                        int in_imgWidth, int in_imgHeight, const unsigned int* in_img);
 
     /** add a span (a height range that is blocked */
-    bool AddSpan(int Xi_x, int Xi_y, int Xi_hBegin, int Xi_hEnd, int Xi_area, int facing, int Xi_mergeThr);
+    bool AddSpan(int in_x, int in_y, int in_hBegin, int in_hEnd, int in_area, int facing, int in_mergeThr);
 
     /** constructors */
-    CDynamicHeightMap(int Xi_width, int Xi_height, const CVec3& Xi_bbmin, float Xi_res=1.0f);
-    CDynamicHeightMap(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res=1.0f);
+    CDynamicHeightMap(int in_width, int in_height, const CVec3& in_bbmin, float in_res=1.0f);
+    CDynamicHeightMap(const CVec3& in_bbMin, const CVec3& in_bbMax, float in_res=1.0f);
     
     /** destructor */
     virtual ~CDynamicHeightMap();
@@ -179,7 +179,7 @@ namespace tpcl
     /** allocate a span from the pool */
     CSpan* AllocSpan();   
     /** free a span to the pool*/
-    void FreeSpan(CSpan* Xi_pSpan);
+    void FreeSpan(CSpan* in_pSpan);
 
     float m_resH, m_invResH;    ///< height resolution: the size of each cell (m_invRes=1.0/m_res)
     CSpan* m_freeList;          ///< linked list of free spans
@@ -222,27 +222,27 @@ namespace tpcl
     int GetSpanCount()  const                       {return m_spanCount;}   
 
     /** Fill spans connection information to form continous surfaces 
-     * @param Xi_walkableHeight   open height above surface to be considered "seperate"
-     * @param Xi_walkableClimb    height difference below which surface are connected */
-    void ComputeSurfaces(float Xi_walkableHeight, float Xi_walkableClimb);
+     * @param in_walkableHeight   open height above surface to be considered "seperate"
+     * @param in_walkableClimb    height difference below which surface are connected */
+    void ComputeSurfaces(float in_walkableHeight, float in_walkableClimb);
 
     /** Fill buffer with all spans height above an x-y point (ordered from high to low)
-     * @param Xi_bufSize    size of floats buffer to fill (note: 1 gets top height)
+     * @param in_bufSize    size of floats buffer to fill (note: 1 gets top height)
      * @return number of spans
      */
-    int GetHeightAt(const CVec3& Xi_pos, int Xi_bufSize, float* Xo_heights) const;
+    int GetHeightAt(const CVec3& in_pos, int in_bufSize, float* out_heights) const;
 
     /** Get map height by span index (syntactic sugar) */
-    inline float GetZ(int Xi_spanId) const;
+    inline float GetZ(int in_spanId) const;
 
     /** stntactic sugar to get the index of the top span */
-    int GetTopSpanId(const CVec3& Xi_pos) const;
+    int GetTopSpanId(const CVec3& in_pos) const;
 
     /** construct from a dynamic height map
-    * @param Xi_walkableHeight   open height above surface to be considered "seperate"
-    * @param Xi_walkableClimb    height difference below which surface are connected (-1 do not connect)
-    * @param Xi_backCull         Remove back facing traingles */
-    CCompactHeightMap(const CDynamicHeightMap& Xi_dynHmap, float Xi_walkableHeight, float Xi_walkableClimb, bool Xi_backCull=false);
+    * @param in_walkableHeight   open height above surface to be considered "seperate"
+    * @param in_walkableClimb    height difference below which surface are connected (-1 do not connect)
+    * @param in_backCull         Remove back facing traingles */
+    CCompactHeightMap(const CDynamicHeightMap& in_dynHmap, float in_walkableHeight, float in_walkableClimb, bool in_backCull=false);
 
     /** destructor */
     virtual ~CCompactHeightMap();
@@ -304,14 +304,14 @@ namespace tpcl
 ******************************************************************************/
 
 
-  inline float CCompactHeightMap::GetZ(int Xi_spanId) const
+  inline float CCompactHeightMap::GetZ(int in_spanId) const
   {
-    return m_spans[Xi_spanId].y * m_resH + m_bbMin.z;
+    return m_spans[in_spanId].y * m_resH + m_bbMin.z;
   }
 
-  inline CVec3 CSimpleHgtMap::GetPos(int Xi_x, int Xi_y) const
+  inline CVec3 CSimpleHgtMap::GetPos(int in_x, int in_y) const
   {
-    return m_bbMin + CVec3(float(Xi_x)*m_res, float(Xi_y)*m_res, Get(Xi_x, Xi_y) * m_resH);
+    return m_bbMin + CVec3(float(in_x)*m_res, float(in_y)*m_res, Get(in_x, in_y) * m_resH);
   }
 
 

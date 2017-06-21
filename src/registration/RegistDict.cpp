@@ -18,11 +18,6 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
-/******************************************************************************
-*
-*: Package Name: sldrcr_sp
-*
-******************************************************************************/
 //#include "registration.h"
 #include "RegistDict.h"
 #include "OrientDict.h"
@@ -42,31 +37,6 @@
 
 namespace tpcl
 {
-
-  /******************************************************************************
-  *                             INTERNAL CONSTANTS  / Functions                 *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                        INCOMPLETE CLASS DECLARATIONS                        *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                       FORWARD FUNCTION DECLARATIONS                         *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                             STATIC VARIABLES                                *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                      CLASS STATIC MEMBERS INITIALIZATION                    *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                              INTERNAL CLASSES                               *
-  ******************************************************************************/
-
   struct CRegOptions
   {
     //parameters:
@@ -85,25 +55,27 @@ namespace tpcl
 
     CRegOptions() { SetDefaults(); }
     
-    void SetDefaults();
+    void SetDefaults()
+    {
+      float m_scale = 1.0f;
+      m_voxelSizeGlobal = 0.5;
+      m_voxelSizeLocal = 0.25;
+      m_d_grid = 3;
+      m_d_sensor = 2;
+      m_lineWidth = 128;
+      m_numlines = 64;
+      m_searchRange = 50 * m_scale;
+      m_medFiltSize0 = 7;
+      m_medFiltSize1 = 5;
+      m_distFromMedianThresh = 0.03f;
+      m_r_max = 60;
+      m_r_min = 2;
+    }
   };
 
-
-
-  /******************************************************************************
-  *                           EXPORTED CLASS METHODS                            *
-  ******************************************************************************/
-  ///////////////////////////////////////////////////////////////////////////////
-  //
-  //                           CCoarseRegister
-  //
-  ///////////////////////////////////////////////////////////////////////////////
-  /******************************************************************************
-  *                               Public methods                                *
-  ******************************************************************************/
   /******************************************************************************
   *
-  *: Method name: SLDRCR_SP_CCoarseRegister
+  *: Class name: CCoarseRegister
   *
   ******************************************************************************/
   CCoarseRegister::CCoarseRegister()
@@ -114,11 +86,7 @@ namespace tpcl
     m_dictionary = new CRegDictionary(optsP->m_voxelSizeGlobal, optsP->m_r_max, optsP->m_r_min, optsP->m_lineWidth, optsP->m_numlines);
   }
 
-  /******************************************************************************
-  *
-  *: Method name: ~SLDRCR_SP_CCoarseRegister
-  *
-  ******************************************************************************/
+
   CCoarseRegister::~CCoarseRegister()
   {
     CRegOptions* optsP = (CRegOptions*)m_opts;
@@ -129,12 +97,6 @@ namespace tpcl
   }
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: SearchRange
-  *
-  ******************************************************************************/
   float CCoarseRegister::RangeNeeded()
   {
     CRegOptions* optsP = (CRegOptions*)m_opts;
@@ -142,12 +104,6 @@ namespace tpcl
   }
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: MainPointCloudUpdate
-  *
-  ******************************************************************************/
   void CCoarseRegister::SetMainPtCloud(const CPtCloud& in_pcl, bool in_append)
   {
     CRegOptions* optsP = (CRegOptions*)m_opts;
@@ -170,23 +126,13 @@ namespace tpcl
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: getMainHashedPtr
-  *
-  ******************************************************************************/
   void* CCoarseRegister::getMainHashedPtr()
   {
     return ((CRegDictionary*)m_dictionary)->getMainHashedPtr();
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: SecondaryPointCloudRegistration
-  *
-  ******************************************************************************/
-  float CCoarseRegister::RegisterCloud(const CPtCloud& Xi_pcl, CMat4& Xo_registration, CMat4* Xi_estimatedOrient)
+  float CCoarseRegister::RegisterCloud(const CPtCloud& in_pcl, CMat4& out_registration, CMat4* in_estimatedOrient)
   {
     const int maxCandidates = 10;
     Features feat;
@@ -196,29 +142,29 @@ namespace tpcl
 
     CRegOptions* optsP = (CRegOptions*)m_opts;
     CPtCloud ptsPrePro; ptsPrePro.m_type = PCL_TYPE_SINGLE_ORIGIN; ptsPrePro.m_color = NULL; ptsPrePro.m_normal = NULL;
-    ptsPrePro.m_numPts = Xi_pcl.m_numPts; ptsPrePro.m_pos = new CVec3[Xi_pcl.m_numPts];
+    ptsPrePro.m_numPts = in_pcl.m_numPts; ptsPrePro.m_pos = new CVec3[in_pcl.m_numPts];
 
     //preprocess local cloud:
-    //if (Xi_pcl.m_type == PCL_TYPE_SINGLE_ORIGIN_SCAN)
+    //if (in_pcl.m_type == PCL_TYPE_SINGLE_ORIGIN_SCAN)
     //{
-      //int lineHeight = Xi_pcl.m_numPts / Xi_pcl.m_lineWidth;
-      feat.DenoiseRange(Xi_pcl, ptsPrePro, optsP->m_medFiltSize0, optsP->m_distFromMedianThresh);
+      //int lineHeight = in_pcl.m_numPts / in_pcl.m_lineWidth;
+      feat.DenoiseRange(in_pcl, ptsPrePro, optsP->m_medFiltSize0, optsP->m_distFromMedianThresh);
     //}
     //else
     //{
     //  float res = float(2 * M_PI) / (128 * 5);
-    //  Features::DenoiseRangeOfPointCloud(Xi_pcl, ptsPrePro, optsP->m_medFiltSize0, optsP->m_medFiltSize1, optsP->m_distFromMedianThresh, res);
+    //  Features::DenoiseRangeOfPointCloud(in_pcl, ptsPrePro, optsP->m_medFiltSize0, optsP->m_medFiltSize1, optsP->m_distFromMedianThresh, res);
     //}
 
     feat.DownSample(ptsPrePro, ptsPrePro, optsP->m_voxelSizeLocal);
 
     //get registration candidates from dictinary:
-    int NumOfCandidates = SecondaryPointCloudRegistrationCandidates(ptsPrePro, maxCandidates, grades, candRegistrations, Xi_estimatedOrient);
+    int NumOfCandidates = SecondaryPointCloudRegistrationCandidates(ptsPrePro, maxCandidates, grades, candRegistrations, in_estimatedOrient);
 
     feat.DownSample(ptsPrePro, ptsPrePro, 2);
 
     //find final registration:
-    float bestGrade = GetRegistrationFromListOfCandidates(NumOfCandidates, ptsPrePro, candRegistrations, Xo_registration);
+    float bestGrade = GetRegistrationFromListOfCandidates(NumOfCandidates, ptsPrePro, candRegistrations, out_registration);
 
     delete[] ptsPrePro.m_pos;
 
@@ -228,36 +174,29 @@ namespace tpcl
   /******************************************************************************
   *                             Protected methods                               *
   ******************************************************************************/
-
-
-  /******************************************************************************
-  *
-  *: Method name: SecondaryPointCloudRegistrationCandidates
-  *
-  ******************************************************************************/
-  int CCoarseRegister::SecondaryPointCloudRegistrationCandidates(const CPtCloud& Xi_pcl, int Xi_maxCandidates, float* Xo_grades, CMat4* Xo_rotations, CMat4* Xi_estimatedOrient)
+  int CCoarseRegister::SecondaryPointCloudRegistrationCandidates(const CPtCloud& in_pcl, int in_maxCandidates, float* out_grades, CMat4* out_rotations, CMat4* in_estimatedOrient)
   {
 
     CRegOptions* optsP = (CRegOptions*)m_opts;
     CRegDictionary* dictionaryP = (CRegDictionary*)m_dictionary;
-    int* candidates = new int[Xi_maxCandidates];
+    int* candidates = new int[in_maxCandidates];
 
     //pick points in range:
     CPtCloud ptsInRange;
-    ptsInRange.m_pos = new CVec3[Xi_pcl.m_numPts];
+    ptsInRange.m_pos = new CVec3[in_pcl.m_numPts];
     int num = 0;
     float rMinSqr = optsP->m_r_min*optsP->m_r_min;
     float rMaxSqr = optsP->m_r_max*optsP->m_r_max;
 
-    for (int Index = 0; Index < Xi_pcl.m_numPts; Index++)
+    for (int Index = 0; Index < in_pcl.m_numPts; Index++)
     {
-      float rQsr = LengthSqr(Xi_pcl.m_pos[Index]);
+      float rQsr = LengthSqr(in_pcl.m_pos[Index]);
       if (rQsr < rMinSqr)
         continue;
       if (rQsr > rMaxSqr)
         continue;
 
-      ptsInRange.m_pos[num] = Xi_pcl.m_pos[Index];
+      ptsInRange.m_pos[num] = in_pcl.m_pos[Index];
       num++;
     }
     ptsInRange.m_numPts = num;
@@ -278,9 +217,9 @@ namespace tpcl
 
     CVec3 estimatedOrient;
     float searchRange = optsP->m_searchRange;
-    if (Xi_estimatedOrient != NULL)
+    if (in_estimatedOrient != NULL)
     {
-      estimatedOrient = CVec3(Xi_estimatedOrient->m[3][0], Xi_estimatedOrient->m[3][1], Xi_estimatedOrient->m[3][2]);
+      estimatedOrient = CVec3(in_estimatedOrient->m[3][0], in_estimatedOrient->m[3][1], in_estimatedOrient->m[3][2]);
     }
     else
     {
@@ -290,7 +229,7 @@ namespace tpcl
       searchRange = Dist2D(dicMinBBox, dicMaxBBox);
     }
 
-    int numOfCandidates = dictionaryP->SearchDictionary(Xi_maxCandidates, optsP->m_searchRange, descriptorDFT, candidates, Xo_grades, Xo_rotations, estimatedOrient);
+    int numOfCandidates = dictionaryP->SearchDictionary(in_maxCandidates, optsP->m_searchRange, descriptorDFT, candidates, out_grades, out_rotations, estimatedOrient);
 
     delete[] descriptor;
     delete[] descriptorDFT;
@@ -300,32 +239,26 @@ namespace tpcl
   }
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: GetRegistrationFromListOfCandidates
-  *
-  ******************************************************************************/
-  float CCoarseRegister::GetRegistrationFromListOfCandidates(int Xi_NumOfCandidates, const CPtCloud& Xi_pcl, CMat4* Xi_registrations, CMat4& Xo_registration)
+  float CCoarseRegister::GetRegistrationFromListOfCandidates(int in_NumOfCandidates, const CPtCloud& in_pcl, CMat4* in_registrations, CMat4& out_registration)
   {
     CRegOptions* optsP = (CRegOptions*)m_opts;
     Features feat;
 
     //stay with candidates of minimum RMSE:
-    float* CandRMSEs = new float[Xi_NumOfCandidates];
+    float* CandRMSEs = new float[in_NumOfCandidates];
     #pragma omp parallel for
-    for (int cand = 0; cand < Xi_NumOfCandidates; cand++)
+    for (int cand = 0; cand < in_NumOfCandidates; cand++)
     {
-      CandRMSEs[cand] = feat.RMSEofRegistration((CSpatialHash2D*)(getMainHashedPtr()), Xi_pcl, 4 * optsP->m_voxelSizeGlobal, Xi_registrations[cand]);
+      CandRMSEs[cand] = feat.RMSEofRegistration((CSpatialHash2D*)(getMainHashedPtr()), in_pcl, 4 * optsP->m_voxelSizeGlobal, in_registrations[cand]);
     }
 
     //TODO: finish RMSE candidate filter
     const int fNumOfCandWanted = 10;// 3; //Final Num Of Candidates wanted
     int finalCandidates[fNumOfCandWanted] = { 0 };
-    int fNumOfCand = MinT(fNumOfCandWanted, Xi_NumOfCandidates);
+    int fNumOfCand = MinT(fNumOfCandWanted, in_NumOfCandidates);
     for (int fCand = 0; fCand < fNumOfCand; fCand++)
     {
-      for (int cand = 0; cand < Xi_NumOfCandidates; cand++)
+      for (int cand = 0; cand < in_NumOfCandidates; cand++)
       {
         if (CandRMSEs[cand] < CandRMSEs[finalCandidates[fCand]])
           finalCandidates[fCand] = cand;
@@ -343,53 +276,20 @@ namespace tpcl
     {
       int cand = finalCandidates[fCand];
       CMat4 l_icpReg;
-      double grade = icpRegistration.RegisterCloud(Xi_pcl, l_icpReg, Xi_registrations + cand);
+      double grade = icpRegistration.RegisterCloud(in_pcl, l_icpReg, in_registrations + cand);
       if (grade < bestGrade)
       {
         bestGrade = grade;
-        Xo_registration = l_icpReg;
+        out_registration = l_icpReg;
       }
     }
 
     icpRegistration.setRegistrationResolution(0.5f*optsP->m_voxelSizeGlobal);
-    icpRegistration.RegisterCloud(Xi_pcl, Xo_registration, &Xo_registration);
+    icpRegistration.RegisterCloud(in_pcl, out_registration, &out_registration);
 
     delete[] CandRMSEs;
 
     return float(bestGrade);
   }
-
-
-  /******************************************************************************
-  *                              Private methods                                *
-  ******************************************************************************/
-
-
-  /******************************************************************************
-  *                            EXPORTED FUNCTIONS                               *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                            INTERNAL FUNCTIONS                               *
-  ******************************************************************************/
-
-
-  void CRegOptions::SetDefaults()
-  {
-    float m_scale = 1.0f;
-    m_voxelSizeGlobal = 0.5;
-    m_voxelSizeLocal = 0.25;
-    m_d_grid = 3;                   
-    m_d_sensor = 2;                 
-    m_lineWidth = 128;              
-    m_numlines = 64;                
-    m_searchRange = 50 * m_scale;             
-    m_medFiltSize0 = 7;             
-    m_medFiltSize1 = 5;             
-    m_distFromMedianThresh = 0.03f; 
-    m_r_max = 60;                   
-    m_r_min = 2;                    
-  }
-
 
 } //namespace SLDR

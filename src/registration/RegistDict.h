@@ -18,14 +18,6 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
-/******************************************************************************
-*
-*: Package Name: sldrcr_sp
-*
-*: Title:
-*
-******************************************************************************/
-
 #ifndef __tpcl_register_dict_H
 #define __tpcl_register_dict_H
 
@@ -35,6 +27,9 @@
 
 namespace tpcl
 {
+  /******************************************************************************
+  *                        INCOMPLETE CLASS DECLARATIONS                        *
+  ******************************************************************************/
   class  CRegDictionary;         // registration Dictionary
 
 
@@ -43,7 +38,7 @@ namespace tpcl
   ******************************************************************************/
   /******************************************************************************
   *
-  *: Class name: SLDR_SP_CCoarseRegister
+  *: Class name: CCoarseRegister
   *
   *: Abstract: Coarse registeration based on dictionary, with ICP registration refinements.
   *            Derived from the thesis of David Avidar (Malaach's group)
@@ -54,9 +49,6 @@ namespace tpcl
   class CCoarseRegister : public IRegister
   {
   public:
-    /******************************************************************************
-    *                               Public methods                                *
-    ******************************************************************************/
     /** Constructor */
     CCoarseRegister();
 
@@ -83,45 +75,39 @@ namespace tpcl
     /** Get registration for a secondary point cloud against the main cloud
     * The second cloud is not stored
     * //TODO/// !!!!currently not supporting unordered point cloud!!!!
-    * @param Xi_pcl               secondary point cloud. //TODO/// - arranged by azimuth and latitude. i.e. row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
-    * @param Xo_registration      best registration found.
-    * @param Xi_estimatedOrient   estimation of registration, if 0 then estimation is identity.
+    * @param in_pcl               secondary point cloud. //TODO/// - arranged by azimuth and latitude. i.e. row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
+    * @param out_registration      best registration found.
+    * @param in_estimatedOrient   estimation of registration, if 0 then estimation is identity.
     * @return                     registration's grade/error - the lower the better.
     */
-    float RegisterCloud(const CPtCloud& Xi_pcl, CMat4& Xo_registration, CMat4* Xi_estimatedOrient = 0);
+    float RegisterCloud(const CPtCloud& in_pcl, CMat4& out_registration, CMat4* in_estimatedOrient = 0);
 
 
 
   protected:
-    /******************************************************************************
-    *                             Protected members                               *
-    ******************************************************************************/
     CRegDictionary* m_dictionary;   ///< internal data used to store features of main point cloud.
     void* m_opts;                   ///< implementation specific options.
 
-    /******************************************************************************
-    *                             Protected methods                               *
-    ******************************************************************************/
+
     /** Get list of top registration matches for a secondary point cloud and thier corresponding grades of the matches.
-    * @param Xi_maxCandidates     maximum number of matches to return.
-    * @param Xi_pts               secondary point cloud.
-    * @param Xo_grades            list of the candidates' grades - the higher the better.
-    * @param Xo_rotations         list of the candidates' registration results.
-    * @param Xi_numPts            total points in the secondary point cloud.
-    * @param Xi_estimatedOrient   estimation of registration location (only uses location vector). if NULL then compare to all dictionary's entries.
+    * @param in_maxCandidates     maximum number of matches to return.
+    * @param in_pts               secondary point cloud.
+    * @param out_grades            list of the candidates' grades - the higher the better.
+    * @param out_rotations         list of the candidates' registration results.
+    * @param in_numPts            total points in the secondary point cloud.
+    * @param in_estimatedOrient   estimation of registration location (only uses location vector). if NULL then compare to all dictionary's entries.
     * @return                     number of candidates found.*/
-    int SecondaryPointCloudRegistrationCandidates(const CPtCloud& Xi_pcl, int Xi_maxCandidates, float* Xo_grades, CMat4* Xo_rotations, CMat4* Xi_estimatedOrient = NULL);
+    int SecondaryPointCloudRegistrationCandidates(const CPtCloud& in_pcl, int in_maxCandidates, float* out_grades, CMat4* out_rotations, CMat4* in_estimatedOrient = NULL);
 
 
     /** returns final registration from list of candidates, using RMSE to reduce list of candidates and ICP for final selection.
-    * @param Xi_NumOfCandidates   number of candidates.
-    * @param Xi_numPts            total points in the secondary point cloud.
-    * @param Xi_pts               secondary point cloud.
-    * @param Xi_registrations     list of the candidates' registration.
-    * @param Xo_registration      best registration from candidates.
+    * @param in_NumOfCandidates   number of candidates.
+    * @param in_numPts            total points in the secondary point cloud.
+    * @param in_pts               secondary point cloud.
+    * @param in_registrations     list of the candidates' registration.
+    * @param out_registration      best registration from candidates.
     * @return                     grade of final registration (ICP grade - the lower the better). */
-    float GetRegistrationFromListOfCandidates(int Xi_NumOfCandidates, const CPtCloud& Xi_pcl, CMat4* Xi_registrations, CMat4& Xo_registration);
-
+    float GetRegistrationFromListOfCandidates(int in_NumOfCandidates, const CPtCloud& in_pcl, CMat4* in_registrations, CMat4& out_registration);
   };
 
 

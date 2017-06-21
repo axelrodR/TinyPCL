@@ -157,14 +157,14 @@ CSpatialHash2D::~CSpatialHash2D ()
 *: Method name: Add
 *
 ******************************************************************************/
-void CSpatialHash2D::Add(const CVec3& Xi_pos, void* Xi_obj)
+void CSpatialHash2D::Add(const CVec3& in_pos, void* in_obj)
 {
   MapInt3* l_data = (MapInt3*)m_data;
   if (l_data->size() == 0)
-    m_pivot = Xi_pos;
+    m_pivot = in_pos;
 
   // convert coordinates to cell coordinates
-  CVec3 l_v = (Xi_pos - m_pivot) * m_resInv;
+  CVec3 l_v = (in_pos - m_pivot) * m_resInv;
   CInt3 l_cell = CInt3((int)l_v.x, (int)l_v.y, (int)l_v.z);
 
   // add to cell
@@ -172,8 +172,8 @@ void CSpatialHash2D::Add(const CVec3& Xi_pos, void* Xi_obj)
   if (l_it == l_data->end()) // empty cell? create list
     (*l_data)[l_cell] = std::vector<Node2D>();
   Node2D n;
-  n.obj = Xi_obj;
-  n.pt = Xi_pos;
+  n.obj = in_obj;
+  n.pt = in_pos;
   (*l_data)[l_cell].push_back(n);
 }
 
@@ -183,24 +183,24 @@ void CSpatialHash2D::Add(const CVec3& Xi_pos, void* Xi_obj)
 *: Method name: FindNearest
 *
 * Find nearest object (using its associated point)
-* @param Xo_pMinPt (optional) closest point
+* @param out_pMinPt (optional) closest point
 * @param max2DRadius maximum 2D radius to search in
 ******************************************************************************/
 
-void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float Xi_max2DRadius) const
+void* CSpatialHash2D::FindNearest(const CVec3& in_pos, CVec3* out_pMinPt, float in_max2DRadius) const
 {
   MapInt3* l_data = (MapInt3*)m_data;
   const void* l_minObj = 0;
   const CVec3* l_minPt = 0;
   float l_minDistSqr = 1E20f;
   float s_epsilon = 0.01f * m_res;
-  if (Xi_max2DRadius < s_epsilon)
-    Xi_max2DRadius  = s_epsilon;
-  float max2dRadSqr = Xi_max2DRadius * Xi_max2DRadius;
+  if (in_max2DRadius < s_epsilon)
+    in_max2DRadius  = s_epsilon;
+  float max2dRadSqr = in_max2DRadius * in_max2DRadius;
   // convert coordinates to cell coordinates
-  CVec3 l_v = (Xi_pos - m_pivot) * m_resInv;
+  CVec3 l_v = (in_pos - m_pivot) * m_resInv;
   CInt3 l_cell = CInt3((int)l_v.x, (int)l_v.y, (int)l_v.z);
-  int rad = int(ceil(Xi_max2DRadius * m_resInv));
+  int rad = int(ceil(in_max2DRadius * m_resInv));
 
   // go over all cells in SPIRAL ORDER
   for (int i=0; i<SPIRAL_ARR_SIZE; ++i)
@@ -220,10 +220,10 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
     const std::vector<Node2D>& nodes = l_it->second;
     for (unsigned int i = 0; i<nodes.size(); i++)
     {
-      float l_dist2DSqr = DistSqr2D(nodes[i].pt, Xi_pos);
+      float l_dist2DSqr = DistSqr2D(nodes[i].pt, in_pos);
       if (l_dist2DSqr > max2dRadSqr)
         continue;
-      float l_distSqr = DistSqr(nodes[i].pt, Xi_pos);
+      float l_distSqr = DistSqr(nodes[i].pt, in_pos);
       if (l_distSqr >= l_minDistSqr)
         continue;
       l_minDistSqr = l_distSqr;
@@ -235,8 +235,8 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
   // is the spiral enough?
   if (l_minDistSqr < MAX_SPIRAL_DIST_SQR *  m_res * m_res)
   {
-    if (Xo_pMinPt != 0)
-      *Xo_pMinPt = l_minPt == 0 ? CVec3(0, 0, 0) : *l_minPt;
+    if (out_pMinPt != 0)
+      *out_pMinPt = l_minPt == 0 ? CVec3(0, 0, 0) : *l_minPt;
     return const_cast<void*>(l_minObj);
   }
 
@@ -252,10 +252,10 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
       const std::vector<Node2D>& nodes = l_it->second;
       for (unsigned int i=0; i<nodes.size(); i++)
       {
-        float l_dist2DSqr = DistSqr2D(nodes[i].pt, Xi_pos);
+        float l_dist2DSqr = DistSqr2D(nodes[i].pt, in_pos);
         if (l_dist2DSqr > max2dRadSqr)
           continue;
-        float l_distSqr = DistSqr(nodes[i].pt, Xi_pos);
+        float l_distSqr = DistSqr(nodes[i].pt, in_pos);
         if (l_distSqr >= l_minDistSqr)
           continue;
         l_minDistSqr = l_distSqr;
@@ -265,8 +265,8 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
     }
   }
 
-  if (Xo_pMinPt != 0)
-    *Xo_pMinPt = l_minPt == 0 ? CVec3(0,0,0) : *l_minPt;
+  if (out_pMinPt != 0)
+    *out_pMinPt = l_minPt == 0 ? CVec3(0,0,0) : *l_minPt;
   return const_cast<void*>(l_minObj);
 }
 
@@ -277,19 +277,19 @@ void* CSpatialHash2D::FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt, float X
 *: Method name: GetNear
 *
 ******************************************************************************/
-int CSpatialHash2D::GetNear(const CVec3& Xi_pos, int Xi_bufSize, void** Xo_buf, CVec3* Xo_pos, float Xi_max2DRadius) const
+int CSpatialHash2D::GetNear(const CVec3& in_pos, int in_bufSize, void** out_buf, CVec3* out_pos, float in_max2DRadius) const
 {
   MapInt3* l_data = (MapInt3*)m_data;
   int l_n = 0;    // number of objects
   //float l_minDist = 1E10;
   float s_epsilon = 0.01f * m_res;
-  if (Xi_max2DRadius < s_epsilon)
-    Xi_max2DRadius  = s_epsilon;
-  float max2dRadSqr = Xi_max2DRadius * Xi_max2DRadius;
+  if (in_max2DRadius < s_epsilon)
+    in_max2DRadius  = s_epsilon;
+  float max2dRadSqr = in_max2DRadius * in_max2DRadius;
   // convert coordinates to cell coordinates
-  CVec3 l_v = (Xi_pos - m_pivot) * m_resInv;
+  CVec3 l_v = (in_pos - m_pivot) * m_resInv;
   CInt3 l_cell = CInt3((int)l_v.x, (int)l_v.y, (int)l_v.z);
-  int rad = int(ceil(Xi_max2DRadius * m_resInv));
+  int rad = int(ceil(in_max2DRadius * m_resInv));
 
   // go over all cells and objects in them to find the minimal distance
   for (int x=-rad; x<=rad; x++)
@@ -303,13 +303,13 @@ int CSpatialHash2D::GetNear(const CVec3& Xi_pos, int Xi_bufSize, void** Xo_buf, 
       const std::vector<Node2D>& nodes = l_it->second;
       for (unsigned int i=0; i<nodes.size(); i++)
       {
-        float l_dist2DSqr = DistSqr2D(nodes[i].pt, Xi_pos);
+        float l_dist2DSqr = DistSqr2D(nodes[i].pt, in_pos);
         if (l_dist2DSqr > max2dRadSqr)
           continue;
-        Xo_buf[l_n] = nodes[i].obj;
-        Xo_pos[l_n++] = nodes[i].pt;
-        if (l_n >= Xi_bufSize)
-          return Xi_bufSize;
+        out_buf[l_n] = nodes[i].obj;
+        out_pos[l_n++] = nodes[i].pt;
+        if (l_n >= in_bufSize)
+          return in_bufSize;
       }
     }
   }

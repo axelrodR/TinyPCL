@@ -83,10 +83,10 @@ namespace tpcl
 
 
     /** random number in an interval [0,maxRange] */
-    unsigned int rand(int Xi_maxRange)
+    unsigned int rand(int in_maxRange)
     {
       unsigned int rI = rand() & ((unsigned int)0x0fffffff);  // 28 bit random integer
-      double a = double(rI) * s_div28Bit * Xi_maxRange;
+      double a = double(rI) * s_div28Bit * in_maxRange;
       return unsigned int(a);
     }
     
@@ -99,23 +99,23 @@ namespace tpcl
       s_div28Bit = 1.0 / (double(RAND_MAX_28bit) + 1.0);
     }
 
-    Xorshift128(const unsigned int* Xi_seeds)
+    Xorshift128(const unsigned int* in_seeds)
     {
-      x = Xi_seeds[0];
-      y = Xi_seeds[1];
-      z = Xi_seeds[2];
-      w = Xi_seeds[3];
+      x = in_seeds[0];
+      y = in_seeds[1];
+      z = in_seeds[2];
+      w = in_seeds[3];
       s_div28Bit = 1.0 / (double(RAND_MAX_28bit) + 1.0);
     }
 
-    Xorshift128(const float* Xi_vecAsSeed)
+    Xorshift128(const float* in_vecAsSeed)
     {
       float f[4];
       // for the seed take only 
-      f[0] = floorf(Xi_vecAsSeed[0] * 10.0f) * 0.1f;
-      f[1] = floorf(Xi_vecAsSeed[1] * 10.0f) * 0.1f;
-      f[2] = floorf(Xi_vecAsSeed[2] * 10.0f) * 0.1f;
-      f[3] = floorf(Xi_vecAsSeed[3] * 10.0f) * 0.1f;
+      f[0] = floorf(in_vecAsSeed[0] * 10.0f) * 0.1f;
+      f[1] = floorf(in_vecAsSeed[1] * 10.0f) * 0.1f;
+      f[2] = floorf(in_vecAsSeed[2] * 10.0f) * 0.1f;
+      f[3] = floorf(in_vecAsSeed[3] * 10.0f) * 0.1f;
       x = (*(unsigned int*)f) ^ 123456789;
       y = (*(unsigned int*)(f + 1)) ^ 362436069;
       z = (*(unsigned int*)(f + 2)) ^ 521288629;
@@ -133,9 +133,9 @@ namespace tpcl
 
 
   /** estimate the number of runs required for RANSAC to complete */
-  int EstimateRanSacIters(float Xi_inliersRatio, float Xi_probSuccess, int Xi_sampleSize)
+  int EstimateRanSacIters(float in_inliersRatio, float in_probSuccess, int in_sampleSize)
   {
-    double l_numIterD = log(1.0 - Xi_probSuccess) / log(1.0 - pow(Xi_inliersRatio,Xi_sampleSize));
+    double l_numIterD = log(1.0 - in_probSuccess) / log(1.0 - pow(in_inliersRatio,in_sampleSize));
     int l_numIt = int(ceil(l_numIterD));
     return l_numIt;
    }
@@ -160,9 +160,9 @@ namespace tpcl
   *: Method name: BestFit
   *
   ******************************************************************************/
-  float CPlane::BestFit(int Xi_numPts, const CVec3* Xi_pts, bool Xi_normalize)
+  float CPlane::BestFit(int in_numPts, const CVec3* in_pts, bool in_normalize)
   {
-    if (Xi_numPts < 3)
+    if (in_numPts < 3)
     {
       m_A=m_B=m_D=0; m_C=1.0f;
       return FLT_MAX;
@@ -172,12 +172,12 @@ namespace tpcl
     double xx = 0.0, xy = 0.0, xz = 0.0;  // covariance matrix (off-diagonal, excluding symmetries)
     double yy = 0.0, yz = 0.0, zz = 0.0;  // covariance matrix (diagonal terms)
     CVec3 l_cent(0,0,0);
-    for (int j=0; j<Xi_numPts; ++j)
-      l_cent += Xi_pts[j];
-    l_cent *= (float)(1.0 / Xi_numPts);
-    for (int j=0; j<Xi_numPts; ++j)
+    for (int j=0; j<in_numPts; ++j)
+      l_cent += in_pts[j];
+    l_cent *= (float)(1.0 / in_numPts);
+    for (int j=0; j<in_numPts; ++j)
     {
-      CVec3 v = Xi_pts[j] - l_cent;
+      CVec3 v = in_pts[j] - l_cent;
       xx += v.x * v.x;  yy += v.y * v.y;  zz += v.z * v.z;
       xy += v.x * v.y;  xz += v.x * v.z;  yz += v.y * v.z;
     }
@@ -217,7 +217,7 @@ namespace tpcl
     // plane offset
     CVec3 l_norm;
     float l_D;
-    if (Xi_normalize)
+    if (in_normalize)
     {
       Normalize_m();
       l_norm = GetOrtho();
@@ -232,41 +232,41 @@ namespace tpcl
       l_D = m_D *= f;
     }
     float fitness = 0.0f;
-    for (int j=0; j<Xi_numPts; ++j)
-      fitness += fabsf(DotProd(l_norm, Xi_pts[j]) + l_D);
-    fitness /= Xi_numPts;
+    for (int j=0; j<in_numPts; ++j)
+      fitness += fabsf(DotProd(l_norm, in_pts[j]) + l_D);
+    fitness /= in_numPts;
     return fitness;
   }
 
 
-  float CPlane::RanSaC(int Xi_numPts, const CVec3* Xi_pts, float Xi_thresholdDist, float Xi_exitGrade)
+  float CPlane::RanSaC(int in_numPts, const CVec3* in_pts, float in_thresholdDist, float in_exitGrade)
   {
-    if (Xi_numPts < 3)
+    if (in_numPts < 3)
       return 0;
 
-    return RanSacConstrained(Xi_numPts, Xi_pts, CVec3(0,0,0), -1, Xi_thresholdDist, Xi_exitGrade); // run with no constraint
+    return RanSacConstrained(in_numPts, in_pts, CVec3(0,0,0), -1, in_thresholdDist, in_exitGrade); // run with no constraint
   }
     
 
 
-  float CPlane::RanSacConstrained(int Xi_numPts, const CVec3* Xi_pts, 
-                          const CVec3& Xi_contraint, const float Xi_constraintAngle,
-                          float Xi_thresholdDist, float Xi_exitGrade)
+  float CPlane::RanSacConstrained(int in_numPts, const CVec3* in_pts, 
+                          const CVec3& in_contraint, const float in_constraintAngle,
+                          float in_thresholdDist, float in_exitGrade)
   {
-    if (Xi_numPts < 3)
+    if (in_numPts < 3)
       return 0;
 
     // constants
     const int MAX_ITERS = 100;
     const int RANDOM_SAMPLE_SIZE = 4;
     const float PROB_SUCCESS = 0.995f; // required success rate
-    const float l_exitgrade = Xi_exitGrade * Xi_numPts;
+    const float l_exitgrade = in_exitGrade * in_numPts;
     // factor for reducing score score with ditance from plane (within threshold distance). A deviation from the normal Ransac.
-    const float iFactor = float(1.0 / (3.0 * Xi_thresholdDist));
+    const float iFactor = float(1.0 / (3.0 * in_thresholdDist));
 
     CVec3 l_sample[RANDOM_SAMPLE_SIZE];     // random samples holder
     //Xorshift128 l_rand();                       // seed is the same for all polygons.
-    Xorshift128 l_rand((float*)Xi_pts);           // seed from the points array. I.e. changes every time
+    Xorshift128 l_rand((float*)in_pts);           // seed from the points array. I.e. changes every time
     float l_bestScore = 0;
     int l_numIter = MAX_ITERS;
 
@@ -276,8 +276,8 @@ namespace tpcl
       // choose a random sample
       for (int i=0; i<RANDOM_SAMPLE_SIZE; i++)
       {
-        unsigned int l_rId = l_rand.rand(Xi_numPts);
-        l_sample[i] = Xi_pts[l_rId];
+        unsigned int l_rId = l_rand.rand(in_numPts);
+        l_sample[i] = in_pts[l_rId];
       }
       // fit a plane
       CPlane l_plane;
@@ -285,8 +285,8 @@ namespace tpcl
       if (f > 100)
         continue;
       const CVec3* l_norm = &(l_plane.GetOrtho());
-      float l_cs = DotProd(Xi_contraint, *l_norm);
-      if (fabsf(l_cs) < Xi_constraintAngle)
+      float l_cs = DotProd(in_contraint, *l_norm);
+      if (fabsf(l_cs) < in_constraintAngle)
         continue;   // plane not in the right direction
       if (l_cs < 0)
         l_plane.Set(-l_plane.m_A,-l_plane.m_B,-l_plane.m_C,-l_plane.m_D);   // facing opposite direction so reverse normal
@@ -294,10 +294,10 @@ namespace tpcl
       // calculate the rank (based on how many points are within threshold of that plane)
       float l_score = 0;
       int l_numInliers = 0;
-      for (int j=0; j<Xi_numPts; j++)
+      for (int j=0; j<in_numPts; j++)
       {
-        float l_dist = fabsf(DotProd(*l_norm, Xi_pts[j]) + l_plane.m_D);
-        if (l_dist > Xi_thresholdDist)
+        float l_dist = fabsf(DotProd(*l_norm, in_pts[j]) + l_plane.m_D);
+        if (l_dist > in_thresholdDist)
           continue;
         l_numInliers++;
         l_score += 1.0f - (l_dist * iFactor);
@@ -312,21 +312,21 @@ namespace tpcl
           break;    // good enough to stop
 
         // estimate the number of iterations needed based on the inliers ratio
-        float l_inlierRatio = float(double(l_numInliers) / double(Xi_numPts));
+        float l_inlierRatio = float(double(l_numInliers) / double(in_numPts));
         int l_numIt = EstimateRanSacIters(l_inlierRatio, PROB_SUCCESS, RANDOM_SAMPLE_SIZE);
         l_numIter = MinT(l_numIt, l_numIter, MAX_ITERS);
       }
     }
-    return l_bestScore / Xi_numPts;
+    return l_bestScore / in_numPts;
   }
 
 
-  float CPlane::Dist(const CVec3& Xi_pt,bool Xi_sign) const
+  float CPlane::Dist(const CVec3& in_pt,bool in_sign) const
   {
     float norm = Length(GetOrtho());
-    float dot = DotProd(Xi_pt, GetOrtho()) + m_D;
+    float dot = DotProd(in_pt, GetOrtho()) + m_D;
     float dist = dot * (1.0f / norm);
-    if (!Xi_sign)
+    if (!in_sign)
       return fabsf(dist);
     else
       return dist;
@@ -334,51 +334,51 @@ namespace tpcl
 
 
 
-  float CPlane::GetClosestPt(const CVec3& Xi_pt,CVec3& Xo_closest) const
+  float CPlane::GetClosestPt(const CVec3& in_pt,CVec3& out_closest) const
   {
     float norm = Length(GetOrtho());
-    float dot = DotProd(Xi_pt,GetOrtho()) + m_D;
+    float dot = DotProd(in_pt,GetOrtho()) + m_D;
     float dist = dot * (1.0f / norm);
-    Xo_closest = Xi_pt - GetOrtho() * dist;
+    out_closest = in_pt - GetOrtho() * dist;
     return dist;
   }
 
 
 
-  int CPlane::FilterDistTooHigh(int Xi_numPts, const CVec3* Xi_pt, CVec3* Xo_filteredPt,
-                          float Xi_thresholdDist, int Xi_AboveBelow, bool Xi_justCount) const
+  int CPlane::FilterDistTooHigh(int in_numPts, const CVec3* in_pt, CVec3* out_filteredPt,
+                          float in_thresholdDist, int in_AboveBelow, bool in_justCount) const
   {
     const CVec3& l_ortho = GetOrtho();
     float l_norm = Length(l_ortho);
     float l_invNorm = 1.0f / l_norm;
 
     int l_n = 0;
-    for (int i=0; i<Xi_numPts; ++i)
+    for (int i=0; i<in_numPts; ++i)
     {
-      float l_dot = DotProd(Xi_pt[i], l_ortho) + m_D;
+      float l_dot = DotProd(in_pt[i], l_ortho) + m_D;
       float l_dist = l_dot * l_invNorm;
-      if (fabsf(l_dist) > Xi_thresholdDist)
+      if (fabsf(l_dist) > in_thresholdDist)
       {
         if (l_dist > 0) // above?
         {
-          if ( !(Xi_AboveBelow & 0x4) )       // far above flag bit set?
+          if ( !(in_AboveBelow & 0x4) )       // far above flag bit set?
             continue;
         }
-        else if ( !(Xi_AboveBelow & 0x8) )    // far below flag bit set?
+        else if ( !(in_AboveBelow & 0x8) )    // far below flag bit set?
           continue;
       }
       else // near
       {
         if (l_dist >= 0) // above?
         {
-          if ( !(Xi_AboveBelow & 0x1) )       // far above flag bit set?
+          if ( !(in_AboveBelow & 0x1) )       // far above flag bit set?
             continue;
         }
-        else if ( !(Xi_AboveBelow & 0x2) )    // far below flag bit set?
+        else if ( !(in_AboveBelow & 0x2) )    // far below flag bit set?
           continue;
       }
-      if (!Xi_justCount)
-        Xo_filteredPt[l_n] = Xi_pt[i];
+      if (!in_justCount)
+        out_filteredPt[l_n] = in_pt[i];
       l_n++;
     }
     return l_n;
@@ -422,10 +422,10 @@ namespace tpcl
 
 
   /** based on: http://geomalgorithms.com/a05-_intersect-1.html */
-  int CPlane::Intersect(const CPlane& Xi_pl, CVec3& Xo_pt1, CVec3& Xo_pt2) const
+  int CPlane::Intersect(const CPlane& in_pl, CVec3& out_pt1, CVec3& out_pt2) const
   {
     CVec3 l_pl1N = GetOrtho();
-    CVec3 l_pl2N = Xi_pl.GetOrtho();
+    CVec3 l_pl2N = in_pl.GetOrtho();
     CVec3 l_cs = CrossProd(l_pl1N, l_pl2N);    // TODO: maybe make cross product with double for more precision.
     float ax = (l_cs.x >= 0 ? l_cs.x : -l_cs.x);
     float ay = (l_cs.y >= 0 ? l_cs.y : -l_cs.y);
@@ -435,7 +435,7 @@ namespace tpcl
     if ((ax+ay+az) < 0.1f)
     {
       // get a point on the plane and test if it is also on the other plane
-      CVec3 l_pt = GetPointInside() - Xi_pl.GetPointInside();
+      CVec3 l_pt = GetPointInside() - in_pl.GetPointInside();
       if (DotProd(l_pl1N, l_pt) == 0)
         return -1; // planes coincide
       else 
@@ -443,37 +443,37 @@ namespace tpcl
     }
 
     // we have aline. We need to compute a point on the line
-    float l_d1 = m_D, l_d2 = Xi_pl.m_D;
+    float l_d1 = m_D, l_d2 = in_pl.m_D;
     float l_max = MaxT(ax,MaxT(ay,az));
     if (l_max == ax)
     {
-      Xo_pt1.x = 0;
-      Xo_pt1.y = (l_d2*l_pl1N.z - l_d1*l_pl2N.z) /  l_cs.x;
-      Xo_pt1.z = (l_d1*l_pl2N.y - l_d2*l_pl1N.y) /  l_cs.x;
+      out_pt1.x = 0;
+      out_pt1.y = (l_d2*l_pl1N.z - l_d1*l_pl2N.z) /  l_cs.x;
+      out_pt1.z = (l_d1*l_pl2N.y - l_d2*l_pl1N.y) /  l_cs.x;
     }
     else if (l_max == ay)
     {
-      Xo_pt1.x = (l_d1*l_pl2N.z - l_d2*l_pl1N.z) /  l_cs.y;
-      Xo_pt1.y = 0;
-      Xo_pt1.z = (l_d2*l_pl1N.x - l_d1*l_pl2N.x) /  l_cs.y;
+      out_pt1.x = (l_d1*l_pl2N.z - l_d2*l_pl1N.z) /  l_cs.y;
+      out_pt1.y = 0;
+      out_pt1.z = (l_d2*l_pl1N.x - l_d1*l_pl2N.x) /  l_cs.y;
     }
     else // (l_max == az)
     {
-      Xo_pt1.x = (l_d2*l_pl1N.y - l_d1*l_pl2N.y) /  l_cs.z;
-      Xo_pt1.y = (l_d1*l_pl2N.x - l_d2*l_pl1N.x) /  l_cs.z;
-      Xo_pt1.z = 0;
+      out_pt1.x = (l_d2*l_pl1N.y - l_d1*l_pl2N.y) /  l_cs.z;
+      out_pt1.y = (l_d1*l_pl2N.x - l_d2*l_pl1N.x) /  l_cs.z;
+      out_pt1.z = 0;
     }
 
-    Xo_pt2 = Xo_pt1 + l_cs;
+    out_pt2 = out_pt1 + l_cs;
     return 1;
   }
 
 
   /** based on: http://geomalgorithms.com/a05-_intersect-1.html */
-  int CPlane::Intersect(const CVec3& Xo_pt1, const CVec3& Xo_pt2, float& Xo_intersectPt, bool Xi_segment) const
+  int CPlane::Intersect(const CVec3& out_pt1, const CVec3& out_pt2, float& out_intersectPt, bool in_segment) const
   {
-    CVec3 u = Xo_pt2 - Xo_pt1;
-    CVec3 w = Xo_pt1 - GetPointInside();
+    CVec3 u = out_pt2 - out_pt1;
+    CVec3 w = out_pt1 - GetPointInside();
 
     CVec3 l_n = GetNormal();
     float D = DotProd(l_n, u);
@@ -486,11 +486,11 @@ namespace tpcl
         return 0;    // no intersection
     }
     // they are not parallel - compute intersect param
-    Xo_intersectPt = N / D;
-    if (!Xi_segment)
+    out_intersectPt = N / D;
+    if (!in_segment)
       return 1;
     // check if the intersection point is in the segment
-    if (Xo_intersectPt < 0.0f || Xo_intersectPt > 1.0f)
+    if (out_intersectPt < 0.0f || out_intersectPt > 1.0f)
       return 0;    // no intersection
     return 1;
   }

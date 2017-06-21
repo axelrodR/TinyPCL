@@ -108,10 +108,10 @@ namespace tpcl
     m_Fpath = NULL;
   }
 
-  CRegDebug::CRegDebug(char* Xi_Fpath)
+  CRegDebug::CRegDebug(char* in_Fpath)
   {
     m_Fpath = NULL;
-    setPath(Xi_Fpath);
+    setPath(in_Fpath);
   }
 
   /******************************************************************************
@@ -130,12 +130,12 @@ namespace tpcl
   *: Method name: ~SLDRCR_SP_CCoarseRegister
   *
   ******************************************************************************/
-  void CRegDebug::setPath(char* Xi_Fpath)
+  void CRegDebug::setPath(char* in_Fpath)
   {
     delete[] m_Fpath;
 
-    m_Fpath = new char[strlen(Xi_Fpath) + 3];
-    strcpy(m_Fpath, Xi_Fpath);
+    m_Fpath = new char[strlen(in_Fpath) + 3];
+    strcpy(m_Fpath, in_Fpath);
     strcat(m_Fpath, "\\");
   }
 
@@ -146,14 +146,14 @@ namespace tpcl
   *
   ******************************************************************************/
   /** save to disk as a BMP */
-  void CRegDebug::SaveAsBmp(char* Xi_Fname, float* Xi_img, int Xi_Width, int Xi_Height, float minVal, float maxVal)
+  void CRegDebug::SaveAsBmp(char* in_Fname, float* in_img, int in_Width, int in_Height, float minVal, float maxVal)
   {
     if (m_Fpath == NULL)
       return;
 
-    char *l_FileFullPath = new char[strlen(m_Fpath) + strlen(Xi_Fname) + 1];
+    char *l_FileFullPath = new char[strlen(m_Fpath) + strlen(in_Fname) + 1];
     strcpy(l_FileFullPath, m_Fpath);
-    strcat(l_FileFullPath, Xi_Fname);
+    strcat(l_FileFullPath, in_Fname);
 
 
     ////IFRLOG_MSG_Assert(l_FileFullPath != NULL, "CDebugImg::SaveAsBMP: missing file name");
@@ -173,8 +173,8 @@ namespace tpcl
 
     BITMAPINFOHEADER l_BmpInfoHdr;
     l_BmpInfoHdr.biSize = sizeof(BITMAPINFOHEADER);
-    l_BmpInfoHdr.biWidth = Xi_Width;
-    l_BmpInfoHdr.biHeight = Xi_Height;
+    l_BmpInfoHdr.biWidth = in_Width;
+    l_BmpInfoHdr.biHeight = in_Height;
     l_BmpInfoHdr.biPlanes = 1;
     l_BmpInfoHdr.biBitCount = 24;
     l_BmpInfoHdr.biCompression = 0L;
@@ -197,23 +197,23 @@ namespace tpcl
     //float minVal = 0;
     //float multVal = 0;
 
-    //int totalSize = Xi_Width * Xi_Height;
+    //int totalSize = in_Width * in_Height;
     //int indexRange = 0;
     //for (indexRange; indexRange < totalSize; indexRange++)
     //{
-    //  if (Xi_img[indexRange] != 0)
+    //  if (in_img[indexRange] != 0)
     //    break;
     //}
 
     //if (indexRange != totalSize)
     //{
-    //  bRange[0] = bRange[1] = Xi_img[indexRange];
+    //  bRange[0] = bRange[1] = in_img[indexRange];
     //  for (indexRange; indexRange < totalSize; indexRange++)
     //  {
-    //    if (Xi_img[indexRange] != 0)
+    //    if (in_img[indexRange] != 0)
     //    {
-    //      bRange[0] = min(bRange[0], Xi_img[indexRange]);
-    //      bRange[1] = max(bRange[1], Xi_img[indexRange]);
+    //      bRange[0] = min(bRange[0], in_img[indexRange]);
+    //      bRange[1] = max(bRange[1], in_img[indexRange]);
     //    }
     //  }
     //minVal = bRange[0];
@@ -221,19 +221,19 @@ namespace tpcl
     //}
 
     // write data
-    int l_bmpRowWidth = (l_BmpInfoHdr.biBitCount*Xi_Width + 31) / 32 * 4;
+    int l_bmpRowWidth = (l_BmpInfoHdr.biBitCount*in_Width + 31) / 32 * 4;
     unsigned char *l_row = new unsigned char[l_bmpRowWidth];
-    BGR* l_RGBrow = new BGR[Xi_Width];
+    BGR* l_RGBrow = new BGR[in_Width];
 
-    for (int y = Xi_Height - 1; y >= 0; --y)
+    for (int y = in_Height - 1; y >= 0; --y)
     {
       //float to RGB:
-      for (int x = 0; x < Xi_Width; x++)
+      for (int x = 0; x < in_Width; x++)
       {
-        int index = y*Xi_Width + x;
-        //unsigned char val = unsigned char(round((Xi_img[index] - minVal) * multVal));
+        int index = y*in_Width + x;
+        //unsigned char val = unsigned char(round((in_img[index] - minVal) * multVal));
         
-        float clampedValNormalized = (MaxT(MinT(Xi_img[index], bRange[1]), bRange[0]) - bRange[0]) * multVal;
+        float clampedValNormalized = (MaxT(MinT(in_img[index], bRange[1]), bRange[0]) - bRange[0]) * multVal;
         //clampedValNormalized = 1.f - pow(1.f - clampedValNormalized, 2);
         if (clampedValNormalized <= 0.33)
         {
@@ -278,7 +278,7 @@ namespace tpcl
       }
 
       //write:
-      memcpy(l_row, l_RGBrow, Xi_Width * sizeof(BGR));
+      memcpy(l_row, l_RGBrow, in_Width * sizeof(BGR));
       fwrite(l_row, l_bmpRowWidth, 1, l_pFile);
     }
     delete[] l_row;

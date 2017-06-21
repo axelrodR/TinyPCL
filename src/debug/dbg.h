@@ -59,20 +59,20 @@ namespace tpcl
     ******************************************************************************/
     /** Constructor */
     CRegDebug();
-    CRegDebug(char* Xi_Fpath);
+    CRegDebug(char* in_Fpath);
 
     /** destructor */
     virtual ~CRegDebug(); 
 
 
     /** set output files path.
-    * @param Xi_Fpath        output files path */
-    void setPath(char* Xi_Fpath);
+    * @param in_Fpath        output files path */
+    void setPath(char* in_Fpath);
 
     /** save float image as bmp.
-    * @param Xi_Fpath       output files name 
-    * @param Xi_img         the float image */
-    void SaveAsBmp(char* Xi_Fname, float* Xi_img, int Xi_Width, int Xi_Height, float minVal, float maxVal);
+    * @param in_Fpath       output files name 
+    * @param in_img         the float image */
+    void SaveAsBmp(char* in_Fname, float* in_img, int in_Width, int in_Height, float minVal, float maxVal);
  
 
   protected:

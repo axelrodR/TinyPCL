@@ -62,20 +62,20 @@ namespace tpcl
     ******************************************************************************/
 
     /** add an object+position pair to the spatial hash */
-    void Add(const CVec3& Xi_pos, void* Xi_obj);
+    void Add(const CVec3& in_pos, void* in_obj);
 
     /** 
      * Find nearest object (using its associated point)
-     * @param Xo_pMinPt (optional) closest point
+     * @param out_pMinPt (optional) closest point
      * @param max2DRadius maximum 2D radius to search in  */
-    void* FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt=0, float Xi_max2DRadius=0.0f) const;
+    void* FindNearest(const CVec3& in_pos, CVec3* out_pMinPt=0, float in_max2DRadius=0.0f) const;
 
 
     /** Get all objects in 2D radius 
-     * @param Xo_buf        buffer to fill with objects
+     * @param out_buf        buffer to fill with objects
      * @param max2DRadius   maximum 2D radius to search in  
      * @return    nuumber of objects*/
-    int GetNear(const CVec3& Xi_pos, int xi_bufSize, void** Xo_buf, CVec3* Xo_pos=0, float Xi_max2DRadius=0.0f) const;
+    int GetNear(const CVec3& in_pos, int xi_bufSize, void** out_buf, CVec3* out_pos=0, float in_max2DRadius=0.0f) const;
 
     /** Clear data */
     void Clear();
@@ -109,14 +109,14 @@ namespace tpcl
   template <typename T> class TSpatialHash2D : public CSpatialHash2D
   {
   public:
-    void Add(const CVec3& Xi_pos, T& Xi_obj)
-      {CSpatialHash2D::Add(Xi_pos, (void*)&Xi_obj);}
+    void Add(const CVec3& in_pos, T& in_obj)
+      {CSpatialHash2D::Add(in_pos, (void*)&in_obj);}
     
-    T* FindNearest(const CVec3& Xi_pos, CVec3* Xo_pMinPt=0, float Xi_max2DRadius=0.0f) const
-      {return (T*)CSpatialHash2D::FindNearest(Xi_pos, Xo_pMinPt, Xi_max2DRadius);}
+    T* FindNearest(const CVec3& in_pos, CVec3* out_pMinPt=0, float in_max2DRadius=0.0f) const
+      {return (T*)CSpatialHash2D::FindNearest(in_pos, out_pMinPt, in_max2DRadius);}
     
-    int GetNear(const CVec3& Xi_pos, int Xi_bufSize, T** Xo_buf, CVec3* Xo_pos=0, float Xi_max2DRadius=0.0f) const
-    {return CSpatialHash2D::GetNear(Xi_pos, Xi_bufSize, (void**)Xo_buf, Xo_pos, Xi_max2DRadius);}
+    int GetNear(const CVec3& in_pos, int in_bufSize, T** out_buf, CVec3* out_pos=0, float in_max2DRadius=0.0f) const
+    {return CSpatialHash2D::GetNear(in_pos, in_bufSize, (void**)out_buf, out_pos, in_max2DRadius);}
 
   TSpatialHash2D(float res=0.1f) : CSpatialHash2D(res){}
   };

@@ -89,7 +89,7 @@ namespace tpcl
 
     /** constructor */
     CMesh ();
-    CMesh (int Xi_numVtx, int Xi_numFaces, bool m_XYZUV);
+    CMesh (int in_numVtx, int in_numFaces, bool m_XYZUV);
 
     /** destructor: DOES NOT delete the data when deleted. */
     virtual ~CMesh ();
@@ -110,10 +110,10 @@ namespace tpcl
     virtual const CMesh* U_GetMesh() = 0;
 
     /** Get bounding box */
-    virtual void U_GetBBox(CVec3& Xo_min, CVec3& Xo_max) const = 0;
+    virtual void U_GetBBox(CVec3& out_min, CVec3& out_max) const = 0;
 
     /** get the texture / associated image */
-    virtual const unsigned int* U_GetTexture(int& Xo_texWidth, int& Xo_texHeight) = 0;
+    virtual const unsigned int* U_GetTexture(int& out_texWidth, int& out_texHeight) = 0;
   };
 
 

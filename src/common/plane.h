@@ -70,8 +70,8 @@ namespace tpcl
     const float& Get (int i) const                 {return *(&m_A + i);}
     const CVec3& GetOrtho() const                  {return *(CVec3*)&m_A;} ///< get orthogonal vector
     //const D3DXVECTOR4& GetAsVec4() const           {return *(D3DXVECTOR4*)&m_A;} ///< get plane as 4-vector
-    void Set(float* Xi_f)                          {m_A=Xi_f[0]; m_B=Xi_f[1]; m_C=Xi_f[2]; m_D=Xi_f[3];}  ///< set
-    void Set(float Xi_A,float Xi_B,float Xi_C,float Xi_D)   {m_A=Xi_A; m_B=Xi_B; m_C=Xi_C; m_D=Xi_D;}     ///< set
+    void Set(float* in_f)                          {m_A=in_f[0]; m_B=in_f[1]; m_C=in_f[2]; m_D=in_f[3];}  ///< set
+    void Set(float in_A,float in_B,float in_C,float in_D)   {m_A=in_A; m_B=in_B; m_C=in_C; m_D=in_D;}     ///< set
 
     /** get the normal to the plane */
     CVec3 GetNormal() const                         { CVec3 v=GetOrtho(); tpcl::Normalize(v); return v; }
@@ -97,66 +97,66 @@ namespace tpcl
 
     /** @brief best fit a plane using mean-least-squares
      * 
-     * @param Xi_normalize    normalize the plane (i.e. A,B,C are the normal vector)
+     * @param in_normalize    normalize the plane (i.e. A,B,C are the normal vector)
      * @return fitness parameter (average distance of points from the plane),
      *         -1 if no plane can be fitted (i.e. all point lie on the same line)
      */
-    float BestFit(int Xi_numPts, const CVec3* Xi_pts, bool Xi_normalize=true);
+    float BestFit(int in_numPts, const CVec3* in_pts, bool in_normalize=true);
 
 
     /** @brief best fit plane using RanSac like algorithm 
-     * @param Xi_thresholdDist      threshold distance for inliers
-     * @param Xi_exitGrade          eaarly out will happen when the exit grade is reached
+     * @param in_thresholdDist      threshold distance for inliers
+     * @param in_exitGrade          eaarly out will happen when the exit grade is reached
      * @return  the percentage of points within threshold distance
      */
-    float RanSaC(int Xi_numPts, const CVec3* Xi_pts,
-                 float Xi_thresholdDist, float Xi_exitGrade = 0.9f);
+    float RanSaC(int in_numPts, const CVec3* in_pts,
+                 float in_thresholdDist, float in_exitGrade = 0.9f);
 
 
     /** @brief best fit plane using RanSac like algorithm
      * plane models are constrained to be within a certain angle of some constrainet normal
-     * @param Xi_constraintAngle    cosine of constraint angle
-     * @param Xi_contraint          normalized constraint normal
+     * @param in_constraintAngle    cosine of constraint angle
+     * @param in_contraint          normalized constraint normal
      * @return  the percentage of points within threshold distance
      */
-    float RanSacConstrained(int Xi_numPts, const CVec3* Xi_pts, 
-                            const CVec3& Xi_contraint, const float Xi_constraintAngle,
-                            float Xi_thresholdDist, float Xi_exitGrade = 0.9f);
+    float RanSacConstrained(int in_numPts, const CVec3* in_pts, 
+                            const CVec3& in_contraint, const float in_constraintAngle,
+                            float in_thresholdDist, float in_exitGrade = 0.9f);
 
     /** distance of a point from (non normalized) plane 
-     * @param Xi_sign   false=absolute disntace,  true=keep sign of distance compared to plane normal)
+     * @param in_sign   false=absolute disntace,  true=keep sign of distance compared to plane normal)
      */
-    float Dist(const CVec3& Xi_pt, bool Xi_sign=false) const;
+    float Dist(const CVec3& in_pt, bool in_sign=false) const;
 
     /** Get closest point on the plane 
-     * @return distance of Xi_pt from the plane (with sign compared to plane normal) */
-    float GetClosestPt(const CVec3& Xi_pt,CVec3& Xo_closest) const;
+     * @return distance of in_pt from the plane (with sign compared to plane normal) */
+    float GetClosestPt(const CVec3& in_pt,CVec3& out_closest) const;
 
 
     /** Filters points with distance below threshold from the plane
-     * @param Xi_pt     points to filter
-     * @param Xo_filteredPt     buffer for filtered points (pointer can be the same as Xi_pt)
-     * @param Xi_AboveBelow     filter bitfield controls which points to keep: 0x1=close above, 0x2=close below, 0x4=far above, 0x8=far below
+     * @param in_pt     points to filter
+     * @param out_filteredPt     buffer for filtered points (pointer can be the same as in_pt)
+     * @param in_AboveBelow     filter bitfield controls which points to keep: 0x1=close above, 0x2=close below, 0x4=far above, 0x8=far below
      * @return  number of points within threshold */
-    int FilterDistTooHigh(int Xi_numPts, const CVec3* Xi_pt, CVec3* Xo_filteredPt,
-                          float Xi_thresholdDist=0.0f, int Xi_AboveBelow=0, bool Xi_justCount=false) const;
+    int FilterDistTooHigh(int in_numPts, const CVec3* in_pt, CVec3* out_filteredPt,
+                          float in_thresholdDist=0.0f, int in_AboveBelow=0, bool in_justCount=false) const;
 
     
     /** Intersction of two planes, as a line through two points
      * @return 0=parralel disjoint, -1=coincide, 1=line intersection */
-    int Intersect(const CPlane& Xi_pl, CVec3& Xo_pt1, CVec3& Xo_pt2) const;
+    int Intersect(const CPlane& in_pl, CVec3& out_pt1, CVec3& out_pt2) const;
 
 
     /** Intersction of a plane and a segment/line
-     * @param Xi_segment    true = treat the two points as segment, false = line through those point
+     * @param in_segment    true = treat the two points as segment, false = line through those point
      * @return 0=disjoint, -1=line lies in plane, 1=intersect at a single point */
-    int Intersect(const CVec3& Xi_pt1, const CVec3& Xi_pt2, float& Xo_intersectPt, bool Xi_segment=true) const;
+    int Intersect(const CVec3& in_pt1, const CVec3& in_pt2, float& out_intersectPt, bool in_segment=true) const;
 
 
     // constrctors
     CPlane (){}
     CPlane (float a, float b, float c, float d)    {m_A=a; m_B=b; m_C=c; m_D=d;}
-    CPlane (float* Xi_vec)                 {m_A=Xi_vec[0]; m_B=Xi_vec[1]; m_C=Xi_vec[2]; m_D=Xi_vec[3];}
+    CPlane (float* in_vec)                 {m_A=in_vec[0]; m_B=in_vec[1]; m_C=in_vec[2]; m_D=in_vec[3];}
 
     // destructor
     ~CPlane (){}
@@ -200,12 +200,12 @@ namespace tpcl
 
     /** constrcutor */
     CCompactPlane(){}
-    CCompactPlane(float Xi_x, float Xi_y, float Xi_z, float Xi_d)
+    CCompactPlane(float in_x, float in_y, float in_z, float in_d)
     {
-      x = short(Xi_x*FIX_PT_NORMAL), y = short(Xi_y*FIX_PT_NORMAL);
-      z = short(Xi_z*FIX_PT_NORMAL), w = short(Xi_d*FIX_PT_D);
+      x = short(in_x*FIX_PT_NORMAL), y = short(in_y*FIX_PT_NORMAL);
+      z = short(in_z*FIX_PT_NORMAL), w = short(in_d*FIX_PT_D);
     }
-    CCompactPlane(const CPlane& Xi_pl) {Set(Xi_pl);}
+    CCompactPlane(const CPlane& in_pl) {Set(in_pl);}
 
     /** accessor */
     short& operator[](int i)                  {return *(&x + i);}

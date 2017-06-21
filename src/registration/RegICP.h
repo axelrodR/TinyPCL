@@ -10,13 +10,6 @@
 #ifndef __tpcl_register_icp_H
 #define __tpcl_register_icp_H
 
-//#include "../include/registration.h"
-
-
-/******************************************************************************
-*                                   IMPORTED                                  *
-******************************************************************************/
-
 #include "../include/registration.h"
 
 /******************************************************************************
@@ -33,11 +26,9 @@ namespace tpcl
   /******************************************************************************
   *                              EXPORTED CLASSES                               *
   ******************************************************************************/
-
-
   /******************************************************************************
   *
-  *: Class name: SLDR_ICP_ICP
+  *: Class name: ICP
   *
   *: Abstract: basic ICP calculation on point cloud.
   *            see: <FILL PAPER REF HERE>
@@ -47,13 +38,10 @@ namespace tpcl
   class ICP : public IRegister
   {
   public:
-    /******************************************************************************
-    *                               Public methods                                *
-    ******************************************************************************/
     /** Constructor 
-    * @param Xi_regThresh         set registration threshold. */
+    * @param in_regThresh         set registration threshold. */
     ICP();
-    ICP(float Xi_regRes);
+    ICP(float in_regRes);
 
     /** destructor */
     virtual ~ICP();
@@ -70,24 +58,24 @@ namespace tpcl
     * expects data to be available whenever registration is called!
     * @param in_mainHashed    pointer to an already hashed point cloud. deletes any local main point cloud. expects data to be available whenever registration is called.
     */
-    void SetMainPtCloud(CSpatialHash2D* Xi_mainHashed);
+    void SetMainPtCloud(CSpatialHash2D* in_mainHashed);
 
     /** Get hashed main point cloud.
     * return         pointer to hashed main point cloud. */
     void* getMainHashedPtr();
 
     /** Set registration threshold.
-    * @param Xi_regThresh         registration threshold. */
-    void setRegistrationResolution(float Xi_regRes);
+    * @param in_regThresh         registration threshold. */
+    void setRegistrationResolution(float in_regRes);
 
     /** Get registration for a secondary point cloud against the main cloud
     * The second cloud is not stored
-    * @param Xo_registration      best registration found.
-    * @param Xi_pcl               secondary point cloud.
-    * @param Xi_estimatedOrient   estimation of registration, if 0 then estimation is identity.
+    * @param out_registration      best registration found.
+    * @param in_pcl               secondary point cloud.
+    * @param in_estimatedOrient   estimation of registration, if 0 then estimation is identity.
     * @return                     registration's grade/error - the lower the better.
     */
-    float RegisterCloud(const CPtCloud& Xi_pcl, CMat4& Xo_registration, CMat4* Xi_estimatedOrient = 0);
+    float RegisterCloud(const CPtCloud& in_pcl, CMat4& out_registration, CMat4* in_estimatedOrient = 0);
 
 
   protected:
@@ -98,9 +86,6 @@ namespace tpcl
     /** Set default values to members. */
     void initMembers();
   };
-
-
-
 
 } // namespace tpcl
 

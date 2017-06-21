@@ -75,56 +75,56 @@ class CGrid2dBase
     const CVec3& GetBBoxMax() const                 {return m_bbMax;} ///< max corner of bounding box
 
     /** get cell using 2D cell coordiantes */
-    void* Get(int Xi_x, int Xi_y)                   {return (void*)Get(GetIndex(Xi_x,Xi_y));}
-    const void* Get(int Xi_x, int Xi_y) const       {return (void*)Get(GetIndex(Xi_x,Xi_y));}
+    void* Get(int in_x, int in_y)                   {return (void*)Get(GetIndex(in_x,in_y));}
+    const void* Get(int in_x, int in_y) const       {return (void*)Get(GetIndex(in_x,in_y));}
 
     /** get cell using world coordinates */
-    void* Get(const CVec3& Xi_pos);
-    const void* Get(const CVec3& Xi_pos) const;
+    void* Get(const CVec3& in_pos);
+    const void* Get(const CVec3& in_pos) const;
 
     /** get the world position associated with a cell coordinates (corner of a cell) */
-    CVec3 GetPos(int Xi_x, int Xi_y) const    {return m_bbMin + CVec3((float)Xi_x,(float)Xi_y,0)*m_res;}
+    CVec3 GetPos(int in_x, int in_y) const    {return m_bbMin + CVec3((float)in_x,(float)in_y,0)*m_res;}
 
     /** get 1D array index using cell coordinates */
-    int GetIndex(int Xi_x, int Xi_y) const          {return Xi_x + Xi_y*m_width;}
-    int GetIndex(const CVec3& Xi_pos) const; ///< get index using world position
+    int GetIndex(int in_x, int in_y) const          {return in_x + in_y*m_width;}
+    int GetIndex(const CVec3& in_pos) const; ///< get index using world position
 
     /** get cell using 1D array index */
-    void* Get(int Xi_index)                         {return (void*)(m_data + (Xi_index*m_stride));}
-    const void* Get(int Xi_index) const             {return (void*)(m_data + (Xi_index*m_stride));}
+    void* Get(int in_index)                         {return (void*)(m_data + (in_index*m_stride));}
+    const void* Get(int in_index) const             {return (void*)(m_data + (in_index*m_stride));}
     
-    /** convert world position to cell coordinates (changes Xi_cellCoord and returns it) */
-    void Convert(const CVec3& Xi_pos, int& Xi_cellX, int& Xi_cellY) const;
-    void ConvertSafe(const CVec3& Xi_pos, int& Xi_cellX, int& Xi_cellY) const; ///< convert position to cell coords with safety checks
+    /** convert world position to cell coordinates (changes in_cellCoord and returns it) */
+    void Convert(const CVec3& in_pos, int& in_cellX, int& in_cellY) const;
+    void ConvertSafe(const CVec3& in_pos, int& in_cellX, int& in_cellY) const; ///< convert position to cell coords with safety checks
 
 
     /** translate and scale the bounding box (changes resolution along the way) 
-     * @param Xi_shift shift of the min box corner.
+     * @param in_shift shift of the min box corner.
      */
-    void Transform(const CVec3& Xi_shift, float scale=1.0f);
+    void Transform(const CVec3& in_shift, float scale=1.0f);
 
     /** clear contents to 0 */
     void Clear();
 
 
     /** Paint/rasterize a triangle to the grid (for height map the height is written) */
-    virtual bool U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_info);
+    virtual bool U_RasterizeTri(const CVec3& in_v0, const CVec3& in_v1, const CVec3& in_v2, int in_info);
 
     /** Paint/rasterize a triangle to the grid with info in "texture" image
      *  (for height map the height is written) */
-    virtual bool U_RasterizeTri(const CVertexUV& Xi_v0, const CVertexUV& Xi_v1, const CVertexUV& Xi_v2,
-                                int Xi_imgWidth, int Xi_imgHeight, const unsigned int* Xi_img);
+    virtual bool U_RasterizeTri(const CVertexUV& in_v0, const CVertexUV& in_v1, const CVertexUV& in_v2,
+                                int in_imgWidth, int in_imgHeight, const unsigned int* in_img);
 
 
     /** constructor */
-    CGrid2dBase(int Xi_width, int Xi_height, const CVec3& Xi_bbmin, float Xi_res=1.0f, int Xi_stride=4);
+    CGrid2dBase(int in_width, int in_height, const CVec3& in_bbmin, float in_res=1.0f, int in_stride=4);
     
     /** @brief constrctor 
      *
      * The width and height of the bounding box are computed from the bounding box corners.
      * The max corner is changed so it is exactly at the end of a grid cell
      */
-    CGrid2dBase(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res=1.0f, int Xi_stride=4);
+    CGrid2dBase(const CVec3& in_bbMin, const CVec3& in_bbMax, float in_res=1.0f, int in_stride=4);
     
     /** destructor */
     virtual ~CGrid2dBase();
@@ -167,12 +167,12 @@ class CGrid2dBase
       : CGrid2dBase(bbMin, bbMax, res, sizeof(T)){}
 
     // wrapper to access cells 
-    T& Get(int Xi_x, int Xi_y)                  {return *(T*)CGrid2dBase::Get(Xi_x,Xi_y);}    ///< the cell using cell coordinates
-    T& Get(int Xi_ind)                          {return *(T*)CGrid2dBase::Get(Xi_ind);}       ///< the cell using an index
-    T& Get(const CVec3& Xi_pos)           {return *(T*)CGrid2dBase::Get(Xi_pos);}       ///< get the cell at a world pos
-    const T& Get(int Xi_x, int Xi_y) const      {return *(T*)CGrid2dBase::Get(Xi_x,Xi_y);}    ///< the cell using cell coordinates
-    const T& Get(int Xi_ind) const              {return *(T*)CGrid2dBase::Get(Xi_ind);}       ///< the cell using an index
-    const T& Get(const CVec3& Xi_pos) const {return *(T*)CGrid2dBase::Get(Xi_pos);}       ///< get the cell at a world pos
+    T& Get(int in_x, int in_y)                  {return *(T*)CGrid2dBase::Get(in_x,in_y);}    ///< the cell using cell coordinates
+    T& Get(int in_ind)                          {return *(T*)CGrid2dBase::Get(in_ind);}       ///< the cell using an index
+    T& Get(const CVec3& in_pos)           {return *(T*)CGrid2dBase::Get(in_pos);}       ///< get the cell at a world pos
+    const T& Get(int in_x, int in_y) const      {return *(T*)CGrid2dBase::Get(in_x,in_y);}    ///< the cell using cell coordinates
+    const T& Get(int in_ind) const              {return *(T*)CGrid2dBase::Get(in_ind);}       ///< the cell using an index
+    const T& Get(const CVec3& in_pos) const {return *(T*)CGrid2dBase::Get(in_pos);}       ///< get the cell at a world pos
   };
 
 } // namespace tpcl

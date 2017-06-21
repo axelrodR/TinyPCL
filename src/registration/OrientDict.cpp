@@ -19,11 +19,6 @@
 //
 
 
-/******************************************************************************
-*
-*: Package Name: sldrcr_sp
-*
-******************************************************************************/
 #include "OrientDict.h"
 #include "features.h"
 #include "SpatialHash.h"
@@ -41,68 +36,30 @@
 
 namespace tpcl
 {
-  /******************************************************************************
-  *
-  *: Class name: SLDR_RDI_COrientedGrid
-  *
-  ******************************************************************************/
-
-
-  /******************************************************************************
-  *                             INTERNAL CONSTANTS  / Functions                 *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                        INCOMPLETE CLASS DECLARATIONS                        *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                       FORWARD FUNCTION DECLARATIONS                         *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                             STATIC VARIABLES                                *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                      CLASS STATIC MEMBERS INITIALIZATION                    *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                              INTERNAL CLASSES                               *
-  ******************************************************************************/
   /** resize an array, retaining previous values and set new ellements to zero.
-  * @param Xio_ptr          input: array of size Xi_size. output: array of size Xi_newSize with all ellements from input array.
-  * @param Xi_size          size of input array.
-  * @param Xi_newSize       size of output array. */
+  * @param io_ptr          input: array of size in_size. output: array of size in_newSize with all ellements from input array.
+  * @param in_size          size of input array.
+  * @param in_newSize       size of output array. */
   template <typename T>
-  static void resizeArray(T* &Xio_ptr, const int& Xi_size, const int& Xi_newSize)
+  static void resizeArray(T* &io_ptr, const int& in_size, const int& in_newSize)
   {
-    T* ptrExtended = new T[Xi_newSize];
-    memset(ptrExtended, 0, Xi_newSize * sizeof(T));
-    memcpy(ptrExtended, Xio_ptr, (MinT(Xi_size, Xi_newSize)) * sizeof(T));
-    delete[] Xio_ptr;
-    Xio_ptr = ptrExtended;
+    T* ptrExtended = new T[in_newSize];
+    memset(ptrExtended, 0, in_newSize * sizeof(T));
+    memcpy(ptrExtended, io_ptr, (MinT(in_size, in_newSize)) * sizeof(T));
+    delete[] io_ptr;
+    io_ptr = ptrExtended;
   };
 
 
 
-  /******************************************************************************
-  *                           EXPORTED CLASS METHODS                            *
-  ******************************************************************************/
-  ///////////////////////////////////////////////////////////////////////////////
-  //
-  //                           COrientedGrid
-  //
-  ///////////////////////////////////////////////////////////////////////////////
-  /******************************************************************************
-  *                               Public methods                                *
-  ******************************************************************************/
+
   /******************************************************************************
   *
-  *: Method name: SLDRCR_RDI_COrientedGrid
+  *: Class name: COrientedGrid
   *
   ******************************************************************************/
+
+
   COrientedGrid::COrientedGrid()
   {
     m_pclMain.m_color = NULL;    m_pclMain.m_normal = NULL;    m_pclMain.m_type = PCL_TYPE_FUSED;
@@ -110,90 +67,54 @@ namespace tpcl
   }
 
 
-  COrientedGrid::COrientedGrid(float Xi_voxelSize)
+  COrientedGrid::COrientedGrid(float in_voxelSize)
   {
     m_pclMain.m_color = NULL;    m_pclMain.m_normal = NULL;    m_pclMain.m_type = PCL_TYPE_FUSED;
     initMembers();
-    m_voxelSize = Xi_voxelSize;
+    m_voxelSize = in_voxelSize;
     m_mainHashed = new CSpatialHash2D(m_voxelSize);
     ((CSpatialHash2D*)(m_mainHashed))->Clear();
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: ~SLDRCR_RDI_COrientedGrid
-  *
-  ******************************************************************************/
   COrientedGrid::~COrientedGrid()
   {
     DeleteGrid();
   }
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: getVoxelSize
-  *
-  ******************************************************************************/
   float COrientedGrid::getVoxelSize()
   {
     return m_voxelSize;
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: getMainHashedPtr
-  *
-  ******************************************************************************/
   void* COrientedGrid::getMainHashedPtr()
   {
     return m_mainHashed;
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: getPtsMainPtr
-  *
-  ******************************************************************************/
-  void COrientedGrid::getPclMainPtr(CPtCloud* &Xo_pclMain)
+  void COrientedGrid::getPclMainPtr(CPtCloud* &out_pclMain)
   {
-    Xo_pclMain = &m_pclMain;
+    out_pclMain = &m_pclMain;
   }
 
-  /******************************************************************************
-  *
-  *: Method name: getGrid
-  *
-  ******************************************************************************/
-  int COrientedGrid::getGrid(CMat4* &Xo_Orient)
+
+  int COrientedGrid::getGrid(CMat4* &out_Orient)
   {
-    Xo_Orient = m_Orient;
+    out_Orient = m_Orient;
     return m_size;
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: getBBox
-  *
-  ******************************************************************************/
-  void COrientedGrid::getBBox(CVec3 &Xo_minBBox, CVec3 &Xo_maxBBox)
+  void COrientedGrid::getBBox(CVec3 &out_minBBox, CVec3 &out_maxBBox)
   {
-    Xo_minBBox = m_minBBox;
-    Xo_maxBBox = m_maxBBox;
+    out_minBBox = m_minBBox;
+    out_maxBBox = m_maxBBox;
   }
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: DeleteGrid
-  *
-  ******************************************************************************/
   void COrientedGrid::DeleteGrid()
   {
     delete m_mainHashed;
@@ -202,11 +123,6 @@ namespace tpcl
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: ResetGrid
-  *
-  ******************************************************************************/
   void COrientedGrid::ResetGrid()
   {
     DeleteGrid();
@@ -224,66 +140,47 @@ namespace tpcl
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: DeleteAndSetVoxelSize
-  *
-  ******************************************************************************/
-  void COrientedGrid::DeleteAndSetVoxelSize(float Xi_voxelSize)
+  void COrientedGrid::DeleteAndSetVoxelSize(float in_voxelSize)
   {
-    m_voxelSize = Xi_voxelSize;
+    m_voxelSize = in_voxelSize;
     ResetGrid();
   }
 
 
-
-
-  /******************************************************************************
-  *
-  *: Method name: PointCloudUpdate
-  *
-  ******************************************************************************/
-  void COrientedGrid::PointCloudUpdate(const CPtCloud& Xi_pcl, CVec3& Xo_minBox, CVec3& Xo_maxBox)
+  void COrientedGrid::PointCloudUpdate(const CPtCloud& in_pcl, CVec3& out_minBox, CVec3& out_maxBox)
   {
     CSpatialHash2D& mainHashed = *((CSpatialHash2D*)(m_mainHashed));
 
-    int totalPts = m_pclMain.m_numPts + Xi_pcl.m_numPts;
+    int totalPts = m_pclMain.m_numPts + in_pcl.m_numPts;
     resizeArray(m_pclMain.m_pos, m_pclMain.m_numPts, totalPts);
 
-    Xo_minBox = Xo_maxBox = Xi_pcl.m_pos[0];
-    for (int ptrIndex = 0; ptrIndex < Xi_pcl.m_numPts; ptrIndex++)
+    out_minBox = out_maxBox = in_pcl.m_pos[0];
+    for (int ptrIndex = 0; ptrIndex < in_pcl.m_numPts; ptrIndex++)
     {
-      m_pclMain.m_pos[m_pclMain.m_numPts] = Xi_pcl.m_pos[ptrIndex];
+      m_pclMain.m_pos[m_pclMain.m_numPts] = in_pcl.m_pos[ptrIndex];
       m_pclMain.m_numPts++;
 
-      mainHashed.Add(Xi_pcl.m_pos[ptrIndex], (void*)(1));
-      Xo_minBox = Min_ps(Xo_minBox, Xi_pcl.m_pos[ptrIndex]);
-      Xo_maxBox = Max_ps(Xo_maxBox, Xi_pcl.m_pos[ptrIndex]);
+      mainHashed.Add(in_pcl.m_pos[ptrIndex], (void*)(1));
+      out_minBox = Min_ps(out_minBox, in_pcl.m_pos[ptrIndex]);
+      out_maxBox = Max_ps(out_maxBox, in_pcl.m_pos[ptrIndex]);
     }
     //at end of for loop: m_pclMain.m_numPts = totalPts;
 
-    m_minBBox = Min_ps(Xo_minBox, m_minBBox);;
-    m_maxBBox = Max_ps(Xo_maxBox, m_maxBBox);;
+    m_minBBox = Min_ps(out_minBox, m_minBBox);;
+    m_maxBBox = Max_ps(out_maxBox, m_maxBBox);;
   }
 
 
-
-
-  /******************************************************************************
-  *
-  *: Method name: ViewpointGridUpdate
-  *
-  ******************************************************************************/
-  int COrientedGrid::ViewpointGridUpdate(float Xi_d_grid, float Xi_d_sensor, CVec3& Xi_minBox, CVec3& Xi_maxBox)
+  int COrientedGrid::ViewpointGridUpdate(float in_d_grid, float in_d_sensor, CVec3& in_minBox, CVec3& in_maxBox)
   {
     Features feat;
     CSpatialHash2D& mainHashed = *((CSpatialHash2D*)(m_mainHashed));
 
-    float invGridRes = 1.0f / Xi_d_grid;
+    float invGridRes = 1.0f / in_d_grid;
 
     //create grid's locations (taking z value from the closest point):
-    int GridWidth = int(ceil((Xi_maxBox.x - Xi_minBox.x) * invGridRes));
-    int GridHeight = int(ceil((Xi_maxBox.y - Xi_minBox.y) * invGridRes));
+    int GridWidth = int(ceil((in_maxBox.x - in_minBox.x) * invGridRes));
+    int GridHeight = int(ceil((in_maxBox.y - in_minBox.y) * invGridRes));
 
     CPtCloud gridPositions;  gridPositions.m_type = PCL_TYPE_FUSED;   gridPositions.m_color = 0;
     gridPositions.m_numPts = GridHeight*GridWidth;
@@ -295,12 +192,12 @@ namespace tpcl
     {
       for (int xGrid = 0; xGrid < GridWidth; xGrid++)
       {
-        CVec3 pos(Xi_minBox.x + xGrid*Xi_d_grid, Xi_minBox.y + yGrid*Xi_d_grid, 0);
+        CVec3 pos(in_minBox.x + xGrid*in_d_grid, in_minBox.y + yGrid*in_d_grid, 0);
         CVec3 closest;
-        if (mainHashed.FindNearest(pos, &closest, Xi_d_grid))
+        if (mainHashed.FindNearest(pos, &closest, in_d_grid))
           pos.z = closest.z;
         else
-          pos.z = Xi_minBox.z;
+          pos.z = in_minBox.z;
         gridPositions.m_pos[yGrid*GridWidth + xGrid] = pos;
       }
     }
@@ -318,7 +215,7 @@ namespace tpcl
     for (int index = 0; index < gridPositions.m_numPts; index++)
     {
       //set viewpoints height above ground (in the normal vector direction above the plane that was found):
-      gridPositions.m_pos[index] = gridPositions.m_pos[index] + (Xi_d_sensor * gridPositions.m_normal[index]);
+      gridPositions.m_pos[index] = gridPositions.m_pos[index] + (in_d_sensor * gridPositions.m_normal[index]);
 
       //find refFrame matrix:
       //zVec = gridPositions.m_normal[index]
@@ -344,21 +241,14 @@ namespace tpcl
   }
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: PointCloudAndGridUpdate
-  *
-  ******************************************************************************/
-  int COrientedGrid::PointCloudAndGridUpdate(const CPtCloud& Xi_pcl, float Xi_d_grid, float Xi_d_sensor)
+  int COrientedGrid::PointCloudAndGridUpdate(const CPtCloud& in_pcl, float in_d_grid, float in_d_sensor)
   {
     CVec3 minBox, maxBox;
 
-    PointCloudUpdate(Xi_pcl, minBox, maxBox);
+    PointCloudUpdate(in_pcl, minBox, maxBox);
 
-    return ViewpointGridUpdate(Xi_d_grid, Xi_d_sensor, minBox, maxBox);
+    return ViewpointGridUpdate(in_d_grid, in_d_sensor, minBox, maxBox);
   }
-
 
 
   /******************************************************************************
@@ -376,77 +266,14 @@ namespace tpcl
     m_maxBBox = CVec3(0, 0, 0);
   }
 
-  /******************************************************************************
-  *                              Private methods                                *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                            EXPORTED FUNCTIONS                               *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                            INTERNAL FUNCTIONS                               *
-  ******************************************************************************/
-
-
-
-
-
-  /***************************************************************************************************************************/
-
-
 
 
   /******************************************************************************
   *
-  *: Class name: SLDR_RDI_CRegDictionary
+  *: Class name: CRegDictionary
   *
   ******************************************************************************/
 
-
-  /******************************************************************************
-  *                             INTERNAL CONSTANTS  / Functions                 *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                        INCOMPLETE CLASS DECLARATIONS                        *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                       FORWARD FUNCTION DECLARATIONS                         *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                             STATIC VARIABLES                                *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                      CLASS STATIC MEMBERS INITIALIZATION                    *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                              INTERNAL CLASSES                               *
-  ******************************************************************************/
-
-
-
-
-  /******************************************************************************
-  *                           EXPORTED CLASS METHODS                            *
-  ******************************************************************************/
-  ///////////////////////////////////////////////////////////////////////////////
-  //
-  //                           CRegDictionary
-  //
-  ///////////////////////////////////////////////////////////////////////////////
-  /******************************************************************************
-  *                               Public methods                                *
-  ******************************************************************************/
-  /******************************************************************************
-  *
-  *: Method name: SLDRCR_RDI_CRegDictionary
-  *
-  ******************************************************************************/
   /** constructor */
   CRegDictionary::CRegDictionary()
   {
@@ -458,22 +285,17 @@ namespace tpcl
   }
 
 
-  CRegDictionary::CRegDictionary(float Xi_voxelSize, float Xi_r_max, float Xi_r_min, int Xi_descWidth, int Xi_descHeight) : COrientedGrid(Xi_voxelSize)
+  CRegDictionary::CRegDictionary(float in_voxelSize, float in_r_max, float in_r_min, int in_descWidth, int in_descHeight) : COrientedGrid(in_voxelSize)
   {
     m_descriptors = NULL;
     m_descriptorsDFT = NULL;
 
-    m_r_max = Xi_r_max;
-    m_r_min = Xi_r_min;
-    m_descWidth = Xi_descWidth;
-    m_descHeight = Xi_descHeight;
+    m_r_max = in_r_max;
+    m_r_min = in_r_min;
+    m_descWidth = in_descWidth;
+    m_descHeight = in_descHeight;
   }
 
-  /******************************************************************************
-  *
-  *: Method name: ~SLDRCR_RDI_CRegDictionary
-  *
-  ******************************************************************************/
 
   CRegDictionary::~CRegDictionary()
   {
@@ -481,43 +303,24 @@ namespace tpcl
   }
 
 
- 
-
-
-  /******************************************************************************
-  *
-  *: Method name: setParameters
-  *
-  ******************************************************************************/
-  void CRegDictionary::setParameters(float Xi_r_max, float Xi_r_min, int Xi_descWidth, int Xi_descHeight)
+  void CRegDictionary::setParameters(float in_r_max, float in_r_min, int in_descWidth, int in_descHeight)
   {
-    m_r_max = Xi_r_max;
-    m_r_min = Xi_r_min;
-    m_descWidth = Xi_descWidth;
-    m_descHeight = Xi_descHeight;
+    m_r_max = in_r_max;
+    m_r_min = in_r_min;
+    m_descWidth = in_descWidth;
+    m_descHeight = in_descHeight;
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: getParameters
-  *
-  ******************************************************************************/
-  void CRegDictionary::getParameters(float& Xo_r_max, float& Xo_r_min, int& Xo_descWidth, int& Xo_descHeight)
+  void CRegDictionary::getParameters(float& out_r_max, float& out_r_min, int& out_descWidth, int& out_descHeight)
   {
-    Xo_r_max = m_r_max;
-    Xo_r_min = m_r_min;
-    Xo_descWidth = m_descWidth;
-    Xo_descHeight = m_descHeight;
+    out_r_max = m_r_max;
+    out_r_min = m_r_min;
+    out_descWidth = m_descWidth;
+    out_descHeight = m_descHeight;
   }
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: ResetDictionary
-  *
-  ******************************************************************************/
   void CRegDictionary::ResetDictionary()
   {
     DeleteDescriptors();
@@ -526,11 +329,6 @@ namespace tpcl
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: DeleteDescriptors
-  *
-  ******************************************************************************/
   void CRegDictionary::DeleteDescriptors()
   {
     if (m_descriptors != NULL)
@@ -549,14 +347,9 @@ namespace tpcl
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: DictionaryUpdate
-  *
-  ******************************************************************************/
-  void CRegDictionary::DictionaryUpdate(const CPtCloud& Xi_pcl, float Xi_d_grid, float Xi_d_sensor)
+  void CRegDictionary::DictionaryUpdate(const CPtCloud& in_pcl, float in_d_grid, float in_d_sensor)
   {
-    int preSize = PointCloudAndGridUpdate(Xi_pcl, Xi_d_grid, Xi_d_sensor);
+    int preSize = PointCloudAndGridUpdate(in_pcl, in_d_grid, in_d_sensor);
 
     //create vectors for the descriptors:
     resizeArray(m_descriptors, preSize, m_size);
@@ -564,19 +357,12 @@ namespace tpcl
   }
 
 
-
-
-  /******************************************************************************
-  *
-  *: Method name: PCL2descriptor
-  *
-  ******************************************************************************/
-  void CRegDictionary::PCL2descriptor(const CPtCloud& Xi_pcl, float* Xo_RangeImage)
+  void CRegDictionary::PCL2descriptor(const CPtCloud& in_pcl, float* out_RangeImage)
   {
     int totalDescSize = m_descHeight * m_descWidth;
     float azimuthRes = m_descWidth / (2.0f * float(M_PI));
     float elevationRes = m_descHeight / float(M_PI);
-    memset(Xo_RangeImage, 0, totalDescSize * sizeof(float));
+    memset(out_RangeImage, 0, totalDescSize * sizeof(float));
 
     //put closest range per azimuth & elevation in the range image.
     #pragma omp parallel
@@ -585,11 +371,11 @@ namespace tpcl
       memset(partialRangeImage, 0, totalDescSize * sizeof(float));
 
       #pragma omp for
-      for (int i = 0; i < Xi_pcl.m_numPts; i++)
+      for (int i = 0; i < in_pcl.m_numPts; i++)
       {
-        float x = Xi_pcl.m_pos[i].x;
-        float y = Xi_pcl.m_pos[i].y;
-        float z = Xi_pcl.m_pos[i].z;
+        float x = in_pcl.m_pos[i].x;
+        float y = in_pcl.m_pos[i].y;
+        float z = in_pcl.m_pos[i].z;
         float azimuth = atan2(y, x);
         float elevation = atan2(z, sqrt(x*x + y*y));
         float r = sqrt(x*x + y*y + z*z);
@@ -610,51 +396,37 @@ namespace tpcl
           {
             int index = row*m_descWidth + col;
 
-            if ((Xo_RangeImage[index] == 0) || (partialRangeImage[index] < Xo_RangeImage[index]))
-              Xo_RangeImage[index] = partialRangeImage[index];
+            if ((out_RangeImage[index] == 0) || (partialRangeImage[index] < out_RangeImage[index]))
+              out_RangeImage[index] = partialRangeImage[index];
           }
       }
     }
   }
 
 
-
-
-  /******************************************************************************
-  *
-  *: Method name: Descriptor2DFT
-  *
-  ******************************************************************************/
-  void CRegDictionary::Descriptor2DFT(float* Xi_Descriptor, std::complex<float>* Xo_DescriptorDFT)
+  void CRegDictionary::Descriptor2DFT(float* in_Descriptor, std::complex<float>* out_DescriptorDFT)
   {
     for (int index2 = 0; index2 < m_descHeight; index2++)
     {
       for (int index1 = 0; index1 < m_descWidth; index1++)
       {
         int index = (index2 * m_descWidth) + index1;
-        Xo_DescriptorDFT[index] = Xi_Descriptor[index];
+        out_DescriptorDFT[index] = in_Descriptor[index];
       }
     }
 
-    tpcl::DFT2D(unsigned int(m_descWidth), unsigned int(m_descHeight), Xo_DescriptorDFT);
+    tpcl::DFT2D(unsigned int(m_descWidth), unsigned int(m_descHeight), out_DescriptorDFT);
   }
 
 
-
-
-  /******************************************************************************
-  *
-  *: Method name: GetEntryDescriptorDFT
-  *
-  ******************************************************************************/
-  std::complex<float>* CRegDictionary::GetEntryDescriptorDFT(int Xi_entryIndex)
+  std::complex<float>* CRegDictionary::GetEntryDescriptorDFT(int in_entryIndex)
   {
-    if (m_descriptors[Xi_entryIndex] == NULL)
+    if (m_descriptors[in_entryIndex] == NULL)
     {
       CPtCloud ptsTran;
       ptsTran.m_pos = new CVec3[m_pclMain.m_numPts];
 
-      CMat4 orients = m_Orient[Xi_entryIndex];
+      CMat4 orients = m_Orient[in_entryIndex];
       CVec3 MatRow0 = CVec3(orients.m[0][0], orients.m[0][1], orients.m[0][2]);
       CVec3 MatRow1 = CVec3(orients.m[1][0], orients.m[1][1], orients.m[1][2]);
       CVec3 MatRow2 = CVec3(orients.m[2][0], orients.m[2][1], orients.m[2][2]);
@@ -686,35 +458,28 @@ namespace tpcl
       //create descriptor - range image, DFT
       int totalDescSize = m_descHeight * m_descWidth;
 
-      m_descriptors[Xi_entryIndex] = new float[totalDescSize];
-      PCL2descriptor(ptsTran, m_descriptors[Xi_entryIndex]);
+      m_descriptors[in_entryIndex] = new float[totalDescSize];
+      PCL2descriptor(ptsTran, m_descriptors[in_entryIndex]);
 
-      m_descriptorsDFT[Xi_entryIndex] = new std::complex<float>[totalDescSize];
-      Descriptor2DFT(m_descriptors[Xi_entryIndex], m_descriptorsDFT[Xi_entryIndex]);
+      m_descriptorsDFT[in_entryIndex] = new std::complex<float>[totalDescSize];
+      Descriptor2DFT(m_descriptors[in_entryIndex], m_descriptorsDFT[in_entryIndex]);
 
       delete[] ptsTran.m_pos;
     }
 
-    return m_descriptorsDFT[Xi_entryIndex];
+    return m_descriptorsDFT[in_entryIndex];
   }
 
 
-
-
-  /******************************************************************************
-  *
-  *: Method name: BestPhaseCorr
-  *
-  ******************************************************************************/
-  void CRegDictionary::BestPhaseCorr(std::complex<float>* Xi_descriptorDFT0, std::complex<float>* Xi_descriptorDFT1, int& Xo_bestRow, int& Xo_bestCol, float& Xo_bestScore)
+  void CRegDictionary::BestPhaseCorr(std::complex<float>* in_descriptorDFT0, std::complex<float>* in_descriptorDFT1, int& out_bestRow, int& out_bestCol, float& out_bestScore)
   {
-    Xo_bestScore = FLT_MIN;
-    Xo_bestRow = 0;
-    Xo_bestCol = 0;
+    out_bestScore = FLT_MIN;
+    out_bestRow = 0;
+    out_bestCol = 0;
 
     std::complex<float>* PhCor = new std::complex<float>[m_descWidth * m_descHeight];
 
-    tpcl::UnitPhaseCorrelation(Xi_descriptorDFT0, Xi_descriptorDFT1, PhCor, unsigned int(m_descWidth), unsigned int(m_descHeight));
+    tpcl::UnitPhaseCorrelation(in_descriptorDFT0, in_descriptorDFT1, PhCor, unsigned int(m_descWidth), unsigned int(m_descHeight));
     tpcl::DFT2D(unsigned int(m_descWidth), unsigned int(m_descHeight), PhCor, false);
     tpcl::DFTshift0ToOrigin(PhCor, unsigned int(m_descWidth), unsigned int(m_descHeight));
 
@@ -725,11 +490,11 @@ namespace tpcl
       {
         int index = (index2 * m_descWidth) + index1;
 
-        if (PhCor[index].real() > Xo_bestScore)
+        if (PhCor[index].real() > out_bestScore)
         {
-          Xo_bestScore = PhCor[index].real();
-          Xo_bestRow = index2;
-          Xo_bestCol = index1;
+          out_bestScore = PhCor[index].real();
+          out_bestRow = index2;
+          out_bestCol = index1;
         }
       }
     }
@@ -738,20 +503,13 @@ namespace tpcl
   }
 
 
-
-
-  /******************************************************************************
-  *
-  *: Method name: SearchDictionary
-  *
-  ******************************************************************************/
-  int CRegDictionary::SearchDictionary(int Xi_maxCandidates, float Xi_searchRadius, std::complex<float>* Xi_descriptorDFT, int* Xo_candidates, float* Xo_grades, CMat4* Xo_orientations, const CVec3& Xi_estimatePos)
+  int CRegDictionary::SearchDictionary(int in_maxCandidates, float in_searchRadius, std::complex<float>* in_descriptorDFT, int* out_candidates, float* out_grades, CMat4* out_orientations, const CVec3& in_estimatePos)
   {
     int NumOfCandidates = 0;
     int minIndex = 0;
-    Xo_grades[minIndex] = FLT_MAX;
+    out_grades[minIndex] = FLT_MAX;
 
-    int* bestCols = new int[Xi_maxCandidates];
+    int* bestCols = new int[in_maxCandidates];
 
     std::vector<int> inSearchRadius;
 
@@ -762,7 +520,7 @@ namespace tpcl
       CVec3 Pos = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
 
       //ignore entries which are too far from the estimation:
-      if (Dist(Xi_estimatePos, Pos) <= Xi_searchRadius)
+      if (Dist(in_estimatePos, Pos) <= in_searchRadius)
         inSearchRadius.push_back(gridIndex);
     }
 
@@ -774,7 +532,7 @@ namespace tpcl
 
 
     int inSrIndex = 0;
-    //take first Xi_maxCandidates entries from dictionary which were considered close enough to estimation:
+    //take first in_maxCandidates entries from dictionary which were considered close enough to estimation:
     for (inSrIndex; inSrIndex < int(inSearchRadius.size()); inSrIndex++)
     {
       int gridIndex = inSearchRadius[inSrIndex];
@@ -783,25 +541,25 @@ namespace tpcl
       float bestMax = FLT_MIN;
       int bestRow = -1;
       int bestCol = -1;
-      BestPhaseCorr(gridDescDFT, Xi_descriptorDFT, bestRow, bestCol, bestMax);
+      BestPhaseCorr(gridDescDFT, in_descriptorDFT, bestRow, bestCol, bestMax);
 
-      Xo_candidates[NumOfCandidates] = gridIndex;
-      Xo_grades[NumOfCandidates] = bestMax;
+      out_candidates[NumOfCandidates] = gridIndex;
+      out_grades[NumOfCandidates] = bestMax;
       bestCols[NumOfCandidates] = bestCol;
 
-      if (bestMax < Xo_grades[minIndex])
+      if (bestMax < out_grades[minIndex])
       {
         minIndex = NumOfCandidates;
       }
 
       NumOfCandidates++;
 
-      if (NumOfCandidates == Xi_maxCandidates)
+      if (NumOfCandidates == in_maxCandidates)
         break;
     }
 
 
-    //continue combing dictionary (remaining with best Xi_maxCandidates Candidates:
+    //continue combing dictionary (remaining with best in_maxCandidates Candidates:
     for (inSrIndex; inSrIndex < int(inSearchRadius.size()); inSrIndex++)
     {
       int gridIndex = inSearchRadius[inSrIndex];
@@ -810,17 +568,17 @@ namespace tpcl
       float bestMax = FLT_MIN;
       int bestRow = -1;
       int bestCol = -1;
-      BestPhaseCorr(gridDescDFT, Xi_descriptorDFT, bestRow, bestCol, bestMax);
-      if (bestMax > Xo_grades[minIndex])
+      BestPhaseCorr(gridDescDFT, in_descriptorDFT, bestRow, bestCol, bestMax);
+      if (bestMax > out_grades[minIndex])
       {
-        Xo_grades[minIndex] = bestMax;
-        Xo_candidates[minIndex] = gridIndex;
+        out_grades[minIndex] = bestMax;
+        out_candidates[minIndex] = gridIndex;
         bestCols[minIndex] = bestCol;
 
 
         for (int candIndex = 0; candIndex < NumOfCandidates; candIndex++)
         {
-          if (Xo_grades[candIndex] < Xo_grades[minIndex])
+          if (out_grades[candIndex] < out_grades[minIndex])
             minIndex = candIndex;
         }
       }
@@ -834,7 +592,7 @@ namespace tpcl
     #pragma omp parallel for
     for (int candIndex = 0; candIndex < NumOfCandidates; candIndex++)
     {
-      CMat4 orients = m_Orient[Xo_candidates[candIndex]];
+      CMat4 orients = m_Orient[out_candidates[candIndex]];
       CVec3 Pos = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
 
       //calc beast azimuth in radians.
@@ -847,10 +605,10 @@ namespace tpcl
         0.0f             ,  0.0f             , 0.0f, 1.0f };
 
 
-      TransposeLeftMultiply(orients, CMat4(OrientVals), Xo_orientations[candIndex]);
-      Xo_orientations[candIndex].m[3][0] = Pos.x;
-      Xo_orientations[candIndex].m[3][1] = Pos.y;
-      Xo_orientations[candIndex].m[3][2] = Pos.z;
+      TransposeLeftMultiply(orients, CMat4(OrientVals), out_orientations[candIndex]);
+      out_orientations[candIndex].m[3][0] = Pos.x;
+      out_orientations[candIndex].m[3][1] = Pos.y;
+      out_orientations[candIndex].m[3][2] = Pos.z;
     }
 
     delete[] bestCols;
@@ -858,13 +616,13 @@ namespace tpcl
     #ifdef DEBUG_LOCAL_RANGE_IMAGE //DEBUG - SearchDictionary print candidates
 
     int bestIndex = 0;
-    float bestGrade = Xo_grades[0];
+    float bestGrade = out_grades[0];
     for (int index = 1; index < NumOfCandidates; index++)
     {
-      if (Xo_grades[index] > bestGrade)
+      if (out_grades[index] > bestGrade)
       {
         bestIndex = index;
-        bestGrade = Xo_grades[index];
+        bestGrade = out_grades[index];
       }
     }
     for (int index = 0; index < NumOfCandidates; index++)
@@ -873,8 +631,8 @@ namespace tpcl
 
       char fileName[100] = "Candidate_";
       char indexC[10];  itoa(index, indexC, 10);
-      char candC[10];   itoa(Xo_candidates[index], candC, 10);
-      char gradeC[10];  itoa(int(Xo_grades[index] * 100), gradeC, 10);
+      char candC[10];   itoa(out_candidates[index], candC, 10);
+      char gradeC[10];  itoa(int(out_grades[index] * 100), gradeC, 10);
 
       if (index == bestIndex)
       {
@@ -887,39 +645,13 @@ namespace tpcl
       strcat(fileName, candC);  strcat(fileName, "_");
       strcat(fileName, gradeC); strcat(fileName, ".bmp");
 
-      debugDic.SaveAsBmp(fileName, m_descriptors[Xo_candidates[index]], m_descWidth, m_descHeight, 2, 60);//Xi_r_min, Xi_r_max); //SearchDictionary debug
+      debugDic.SaveAsBmp(fileName, m_descriptors[out_candidates[index]], m_descWidth, m_descHeight, 2, 60);//in_r_min, in_r_max); //SearchDictionary debug
     }
     #endif
 
 
     return NumOfCandidates;
   }
-
-
-  /******************************************************************************
-  *                             Protected methods                               *
-  ******************************************************************************/
-  
-
-
-
-  /******************************************************************************
-  *                              Private methods                                *
-  ******************************************************************************/
-
-
-  /******************************************************************************
-  *                            EXPORTED FUNCTIONS                               *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                            INTERNAL FUNCTIONS                               *
-  ******************************************************************************/
-
-
-
-
-
 
 
 } //namespace SLDR

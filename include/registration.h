@@ -56,9 +56,9 @@ namespace tpcl
 
     /** Get registration for a secondary point cloud against the main cloud
      * The second cloud is not stored
-     * @param Xo_registration      best registration found.
-     * @param Xi_pcl               secondary point cloud.
-     * @param Xi_estimatedOrient   estimation of registration, if 0 then estimation is identity.
+     * @param out_registration      best registration found.
+     * @param in_pcl               secondary point cloud.
+     * @param in_estimatedOrient   estimation of registration, if 0 then estimation is identity.
      * @return                     registration's grade/error - the lower the better. 
      */
     virtual float RegisterCloud(const CPtCloud& in_pcl, CMat4& out_registration, CMat4* in_estimatedOrient = 0) = 0;

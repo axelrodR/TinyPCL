@@ -182,8 +182,8 @@ namespace tpcl
   /** linear interploation */
   template <typename Tvec3>     inline Tvec3 Lerp(const Tvec3& lhs, const Tvec3& rhs, float t);
 
-  bool IsValid(const TVec3<float>& Xi_v);
-  bool IsValid(const TVec3<double>& Xi_v);
+  bool IsValid(const TVec3<float>& in_v);
+  bool IsValid(const TVec3<double>& in_v);
 
 
 

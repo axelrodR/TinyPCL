@@ -18,11 +18,6 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
-/******************************************************************************
-*
-*: Package Name: features
-*
-******************************************************************************/
 #include "features.h"
 #include <algorithm>
 #include "SpatialHash.h"
@@ -32,64 +27,39 @@
 
 namespace tpcl
 {
-
-  /******************************************************************************
-  *                             INTERNAL CONSTANTS  / Functions                 *
-  ******************************************************************************/
-  
-  /******************************************************************************
-  *                        INCOMPLETE CLASS DECLARATIONS                        *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                       FORWARD FUNCTION DECLARATIONS                         *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                             STATIC VARIABLES                                *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                      CLASS STATIC MEMBERS INITIALIZATION                    *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                              INTERNAL CLASSES                               *
-  ******************************************************************************/
-
   /** 2D median filter. assums image width/height are power of 2.
   *   edges are treated with cyclic indices.
-  * @param Xi_lineWidth                image width.
-  * @param Xi_numlines                 image height.
-  * @param Xi_medFiltSize              median filter size.
-  * @param Xi_pts                      input image.
-  * @param Xo_ptsFiltered              2D median filtered image. assumes  Xo_ptsFiltered != Xi_pts*/
-  void Median2DPowOf2(int Xi_lineWidth, int Xi_numlines, int Xi_medFiltSize, float* Xi_pts, float* Xo_ptsFiltered)
+  * @param in_lineWidth                image width.
+  * @param in_numlines                 image height.
+  * @param in_medFiltSize              median filter size.
+  * @param in_pts                      input image.
+  * @param out_ptsFiltered              2D median filtered image. assumes  out_ptsFiltered != in_pts*/
+  void Median2DPowOf2(int in_lineWidth, int in_numlines, int in_medFiltSize, float* in_pts, float* out_ptsFiltered)
   {
-    int windowSize = Xi_medFiltSize*Xi_medFiltSize;
-    int half1DWindow = Xi_medFiltSize >> 1;
+    int windowSize = in_medFiltSize*in_medFiltSize;
+    int half1DWindow = in_medFiltSize >> 1;
 
     #pragma omp parallel
     {
       float* window = new float[windowSize];
       #pragma omp for
-      for (int row = 0; row < Xi_numlines; row++)
+      for (int row = 0; row < in_numlines; row++)
       {
-        for (int col = 0; col < Xi_lineWidth; col++)
+        for (int col = 0; col < in_lineWidth; col++)
         {
           for (int winRow = -half1DWindow; winRow <= half1DWindow; winRow++)
           {
             for (int winCol = -half1DWindow; winCol <= half1DWindow; winCol++)
             {
-              int cyclicRow = ((unsigned int)(row + winRow)) & (Xi_numlines - 1);
-              int cyclicCol = ((unsigned int)(col + winCol)) & (Xi_lineWidth - 1);
-              int index = (cyclicRow * Xi_lineWidth) + cyclicCol;
-              int winIndex = ((winRow + half1DWindow) * Xi_medFiltSize) + (winCol + half1DWindow);
-              window[winIndex] = Xi_pts[index];
+              int cyclicRow = ((unsigned int)(row + winRow)) & (in_numlines - 1);
+              int cyclicCol = ((unsigned int)(col + winCol)) & (in_lineWidth - 1);
+              int index = (cyclicRow * in_lineWidth) + cyclicCol;
+              int winIndex = ((winRow + half1DWindow) * in_medFiltSize) + (winCol + half1DWindow);
+              window[winIndex] = in_pts[index];
             }
           }
           std::nth_element(window, window + (windowSize >> 1), window + windowSize);
-          Xo_ptsFiltered[row*Xi_lineWidth + col] = window[windowSize >> 1];
+          out_ptsFiltered[row*in_lineWidth + col] = window[windowSize >> 1];
         }
       }
       delete[] window;
@@ -99,43 +69,43 @@ namespace tpcl
 
   /** 2D median filter.
   *   edges are treated with mirroring.
-  * @param Xi_lineWidth                image width.
-  * @param Xi_numlines                 image height.
-  * @param Xi_medFiltSize              median filter size.
-  * @param Xi_pts                      input image.
-  * @param Xo_ptsFiltered              2D median filtered image. assumes  Xo_ptsFiltered != Xi_pts*/
-  void Median2D(int Xi_lineWidth, int Xi_numlines, int Xi_medFiltSize, float* Xi_pts, float* Xo_ptsFiltered)
+  * @param in_lineWidth                image width.
+  * @param in_numlines                 image height.
+  * @param in_medFiltSize              median filter size.
+  * @param in_pts                      input image.
+  * @param out_ptsFiltered              2D median filtered image. assumes  out_ptsFiltered != in_pts*/
+  void Median2D(int in_lineWidth, int in_numlines, int in_medFiltSize, float* in_pts, float* out_ptsFiltered)
   {
-    if (Xi_medFiltSize < 2)
+    if (in_medFiltSize < 2)
     {
-      for (int index = 0; index < Xi_lineWidth * Xi_numlines; index++)
-        Xo_ptsFiltered[index] = Xi_pts[index];
+      for (int index = 0; index < in_lineWidth * in_numlines; index++)
+        out_ptsFiltered[index] = in_pts[index];
     }
     else
     {
-      int windowSize = Xi_medFiltSize*Xi_medFiltSize;
-      int half1DWindow = Xi_medFiltSize >> 1;
+      int windowSize = in_medFiltSize*in_medFiltSize;
+      int half1DWindow = in_medFiltSize >> 1;
 
       #pragma omp parallel
       {
         //filter on center of image (without edges):
         float* window = new float[windowSize];
         #pragma omp for
-        for (int row = half1DWindow; row < Xi_numlines - half1DWindow; row++)
+        for (int row = half1DWindow; row < in_numlines - half1DWindow; row++)
         {
-          for (int col = half1DWindow; col < Xi_lineWidth - half1DWindow; col++)
+          for (int col = half1DWindow; col < in_lineWidth - half1DWindow; col++)
           {
             for (int winRow = -half1DWindow; winRow <= half1DWindow; winRow++)
             {
               for (int winCol = -half1DWindow; winCol <= half1DWindow; winCol++)
               {
-                int index = ((row + winRow) * Xi_lineWidth) + (col + winCol);
-                int winIndex = ((winRow + half1DWindow) * Xi_medFiltSize) + (winCol + half1DWindow);
-                window[winIndex] = Xi_pts[index];
+                int index = ((row + winRow) * in_lineWidth) + (col + winCol);
+                int winIndex = ((winRow + half1DWindow) * in_medFiltSize) + (winCol + half1DWindow);
+                window[winIndex] = in_pts[index];
               }
             }
             std::nth_element(window, window + (windowSize >> 1), window + windowSize);
-            Xo_ptsFiltered[row*Xi_lineWidth + col] = window[windowSize >> 1];
+            out_ptsFiltered[row*in_lineWidth + col] = window[windowSize >> 1];
           }
         }
         delete[] window;
@@ -144,15 +114,15 @@ namespace tpcl
 
       //filter on edges of image:
       float* window = new float[windowSize];
-      for (int row = 0; row < Xi_numlines; row++)
+      for (int row = 0; row < in_numlines; row++)
       {
-        bool center = (row >= half1DWindow) && (row < Xi_numlines - half1DWindow);
+        bool center = (row >= half1DWindow) && (row < in_numlines - half1DWindow);
 
-        for (int col = 0; col < Xi_lineWidth; col++)
+        for (int col = 0; col < in_lineWidth; col++)
         {
           if (center && (col >= half1DWindow)) //not working on the center again
           {
-            col = Xi_lineWidth - half1DWindow;
+            col = in_lineWidth - half1DWindow;
             center = false;
           }
 
@@ -162,21 +132,21 @@ namespace tpcl
             {
               int indexRow = row + winRow;
               indexRow = (indexRow < 0) ? -indexRow :
-                ((indexRow >= Xi_numlines) ? (2 * (Xi_numlines - 1) - indexRow) :
+                ((indexRow >= in_numlines) ? (2 * (in_numlines - 1) - indexRow) :
                   indexRow);
 
               int indexCol = col + winCol;
               indexCol = (indexCol < 0) ? -indexCol :
-                ((indexCol >= Xi_lineWidth) ? (2 * (Xi_lineWidth - 1) - indexCol) :
+                ((indexCol >= in_lineWidth) ? (2 * (in_lineWidth - 1) - indexCol) :
                   indexCol);
 
-              int index = (indexRow * Xi_lineWidth) + indexCol;
-              int winIndex = ((winRow + half1DWindow) * Xi_medFiltSize) + (winCol + half1DWindow);
-              window[winIndex] = Xi_pts[index];
+              int index = (indexRow * in_lineWidth) + indexCol;
+              int winIndex = ((winRow + half1DWindow) * in_medFiltSize) + (winCol + half1DWindow);
+              window[winIndex] = in_pts[index];
             }
           }
           std::nth_element(window, window + (windowSize >> 1), window + windowSize);
-          Xo_ptsFiltered[row*Xi_lineWidth + col] = window[windowSize >> 1];
+          out_ptsFiltered[row*in_lineWidth + col] = window[windowSize >> 1];
         }
       }
       delete[] window;
@@ -186,15 +156,8 @@ namespace tpcl
 
 
   /******************************************************************************
-  *                           EXPORTED CLASS METHODS                            *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                               Public methods                                *
-  ******************************************************************************/
-  /******************************************************************************
   *
-  *: Method name: Features
+  *: Class name: Features
   *
   ******************************************************************************/
   Features::Features()
@@ -272,12 +235,6 @@ namespace tpcl
   }
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: DenoiseRangeOfOrderedPointCloud
-  *
-  ******************************************************************************/
   void Features::DenoiseRange(const CPtCloud& in_pcl, CPtCloud& out_pcl, int in_windowSize, float in_noiseTh)
   {
     int medFiltSize0 = in_windowSize;
@@ -337,25 +294,12 @@ namespace tpcl
   }
 
 
-
-
-  /******************************************************************************
-  *
-  *: Method name: DenoiseRangeOfPointCloud
-  *
-  ******************************************************************************/
   void Features::DenoiseRangeOfPointCloud()
   {
 
   }
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: DownSamplePointCloud
-  *
-  ******************************************************************************/
   void Features::DownSample(const CPtCloud& in_pcl, CPtCloud& out_pcl, float in_voxelSize)
   {
     float InvVoxelSize = 1.0f / in_voxelSize;
@@ -415,30 +359,23 @@ namespace tpcl
   }
 
 
-
-
-  /******************************************************************************
-  *
-  *: Method name: RMSEofRegistration
-  *
-  ******************************************************************************/
-  float Features::RMSEofRegistration(CSpatialHash2D* Xi_pcl1, const CPtCloud& Xi_pcl2, float Xi_max2DRadius, const CMat4& Xi_Rt)
+  float Features::RMSEofRegistration(CSpatialHash2D* in_pcl1, const CPtCloud& in_pcl2, float in_max2DRadius, const CMat4& in_Rt)
   {
     double RMSE = 0;
-    float outPenalty = Xi_max2DRadius*Xi_max2DRadius*1.5f;
+    float outPenalty = in_max2DRadius*in_max2DRadius*1.5f;
 
     #pragma omp parallel for reduction(+:RMSE)
-    for (int i = 0; i<Xi_pcl2.m_numPts; i++)
+    for (int i = 0; i<in_pcl2.m_numPts; i++)
     {
       CVec3 transformedPt;
       CVec3 closestPt;
 
       // transform point according to R|t
-      MultiplyVectorRightSidePlusOffset(Xi_Rt, Xi_pcl2.m_pos[i], transformedPt);
+      MultiplyVectorRightSidePlusOffset(in_Rt, in_pcl2.m_pos[i], transformedPt);
 
       // search for match
       float dist = outPenalty;
-      if (Xi_pcl1->FindNearest(transformedPt, &closestPt, Xi_max2DRadius))
+      if (in_pcl1->FindNearest(transformedPt, &closestPt, in_max2DRadius))
       {
         dist = DistSqr(transformedPt, closestPt);
       }
@@ -446,30 +383,8 @@ namespace tpcl
       RMSE += dist;
     }
     
-    RMSE /= Xi_pcl2.m_numPts;
+    RMSE /= in_pcl2.m_numPts;
     return float(sqrt(RMSE));
   }
-
-
-  /******************************************************************************
-  *                             Protected methods                               *
-  ******************************************************************************/
-
-
-
-
-  /******************************************************************************
-  *                              Private methods                                *
-  ******************************************************************************/
-
-
-  /******************************************************************************
-  *                            EXPORTED FUNCTIONS                               *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                            INTERNAL FUNCTIONS                               *
-  ******************************************************************************/
-
 
 } //namespace SLDR

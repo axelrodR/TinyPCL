@@ -23,10 +23,6 @@
 #define __tpcl_ftr_H
 
 
-/******************************************************************************
-*                                   IMPORTED                                  *
-******************************************************************************/
-
 #include "../include/iFeatures.h"
 #include "../../include/vec.h"
 
@@ -41,15 +37,18 @@ namespace tpcl
   /******************************************************************************
   *                              EXPORTED CLASSES                               *
   ******************************************************************************/
-
+  /******************************************************************************
+  *
+  *: Class name: Features
+  *
+  *: Abstract: a bundle of point cloud processing functions.
+  *
+  ******************************************************************************/
 
   /** basic features calculations on point cloud. */
   class Features : public IFeatures
   {
   public:
-    /******************************************************************************
-    *                               Public methods                                *
-    ******************************************************************************/
     /** Constructor */
     Features();
 
@@ -69,7 +68,7 @@ namespace tpcl
 
     /** denose by range an xyz image and return a denoised point cloud.
     * @param in_pcl                      input point cloud of type PCL_TYPE_SINGLE_ORIGIN_SCAN. (assuming row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j).
-    * @param out_pcl                      denoised point cloud. assumes buffer size at least as Xi_pts's size.
+    * @param out_pcl                      denoised point cloud. assumes buffer size at least as in_pts's size.
     * @param in_windowSize             median filter size for the range imgae.
     * @param in_noiseTh     max distance between point and median filter's result. */
     virtual void DenoiseRange(const CPtCloud& in_pcl, CPtCloud& out_pcl, int in_windowSize, float in_noiseTh);
@@ -82,7 +81,7 @@ namespace tpcl
 
     /** downsample a point cloud. Divides to grid from minXYZ (of pts) to max XYZ, of size m_voxelSize.
     *  If more than one point in same grid index, takes first one encountered.
-    *  supports Xi_pts = Xo_pts. assumes size of Xo_pts >= Xi_numPts.
+    *  supports in_pts = out_pts. assumes size of out_pts >= in_numPts.
     * @param in_pcl                 input point cloud.
     * @param out_pcl                 downsampled point cloud.
     * @param in_voxelSize           size of a voxel in grid. assums bigger than 0. */
@@ -91,22 +90,13 @@ namespace tpcl
 
     /** calculates the RMSE of a registration.
     *   !! points further away than max2DRadius will be considered as max2DRadius*sqrt(1.5) away.
-    * @param Xi_max2DRadius  maximum 2D radius to looks for matches of projected pcl1 in pcl2.
-    * @param Xi_pcl1         main hashed point cloud.
-    * @param Xi_pcl2size     2nd point cloud size.
-    * @param Xi_pcl2         2nd point cloud.
-    * @param Xi_Rt           registration from 2nd point cloud to main. 
+    * @param in_max2DRadius  maximum 2D radius to looks for matches of projected pcl1 in pcl2.
+    * @param in_pcl1         main hashed point cloud.
+    * @param in_pcl2size     2nd point cloud size.
+    * @param in_pcl2         2nd point cloud.
+    * @param in_Rt           registration from 2nd point cloud to main. 
     * return                 RMSE of registration. */
-    virtual float RMSEofRegistration(CSpatialHash2D* Xi_pcl1, const CPtCloud& Xi_pcl2, float Xi_max2DRadius, const CMat4& Xi_Rt);
-
-  protected:
-    /******************************************************************************
-    *                             Protected members                               *
-    ******************************************************************************/
-
-    /******************************************************************************
-    *                             Protected methods                               *
-    ******************************************************************************/
+    virtual float RMSEofRegistration(CSpatialHash2D* in_pcl1, const CPtCloud& in_pcl2, float in_max2DRadius, const CMat4& in_Rt);
 
   };
  

@@ -92,21 +92,21 @@ namespace tpcl
   *: Method name: TPCL_MESH_CMesh
   *
   ******************************************************************************/
-  CMesh::CMesh (int Xi_numVtx, int Xi_numFaces, bool Xi_XYZUV)
+  CMesh::CMesh (int in_numVtx, int in_numFaces, bool in_XYZUV)
   {
-    if (Xi_XYZUV)
+    if (in_XYZUV)
     {
-      m_vertsUV = new CVertexUV[Xi_numVtx];
+      m_vertsUV = new CVertexUV[in_numVtx];
       m_XYZUV = 1;
     }
     else
     {
-      m_verts = new CVec3[Xi_numVtx];
+      m_verts = new CVec3[in_numVtx];
       m_XYZUV = 0;
     }
-    m_faces = new int[Xi_numFaces*3];
-    m_numVerts = Xi_numVtx;
-    m_numFaces = Xi_numFaces;
+    m_faces = new int[in_numFaces*3];
+    m_numVerts = in_numVtx;
+    m_numFaces = in_numFaces;
     m_managed = 1;
   }
 

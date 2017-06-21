@@ -85,52 +85,52 @@ void Log(...) {}
 *: Method name: TPCL_GRID_CGrid
 *
 ******************************************************************************/
-CGrid2dBase::CGrid2dBase(const CVec3& Xi_bbMin, const CVec3& Xi_bbMax, float Xi_res, int Xi_stride)
+CGrid2dBase::CGrid2dBase(const CVec3& in_bbMin, const CVec3& in_bbMax, float in_res, int in_stride)
 {
-  m_bbMin = Xi_bbMin;
-  m_res = Xi_res;
-  m_invRes = 1.0f / Xi_res;
+  m_bbMin = in_bbMin;
+  m_res = in_res;
+  m_invRes = 1.0f / in_res;
   m_data = 0;
 
-  if ( !IsValid(Xi_bbMin) || !IsValid(Xi_bbMin) )
+  if ( !IsValid(in_bbMin) || !IsValid(in_bbMin) )
   {
     Log("Error: bounding box is invalid (NaN or inf)\n");
     return;
   }
-  m_width = (int)ceil((Xi_bbMax.x - Xi_bbMin.x) * m_invRes);
-  m_height = (int)ceil((Xi_bbMax.y - Xi_bbMin.y) * m_invRes);
+  m_width = (int)ceil((in_bbMax.x - in_bbMin.x) * m_invRes);
+  m_height = (int)ceil((in_bbMax.y - in_bbMin.y) * m_invRes);
   if (m_width <= 0 || m_height <= 0)
   {
     Log("Error: box and resolution define a grid with no cells.\n");
     return;
   }
-  m_stride = Xi_stride;
-  m_lineSize = m_width * Xi_stride;
-  m_data = new char[m_width*m_height*Xi_stride];
+  m_stride = in_stride;
+  m_lineSize = m_width * in_stride;
+  m_data = new char[m_width*m_height*in_stride];
   Log("Trying to create grid from box (%4.2f x %4.2f x %4.2f)  <-->  (%4.2f x %4.2f x %4.2f)\n",
-      Xi_bbMin.x, Xi_bbMin.y, Xi_bbMin.z, Xi_bbMax.x, Xi_bbMax.y, Xi_bbMax.z);
+      in_bbMin.x, in_bbMin.y, in_bbMin.z, in_bbMax.x, in_bbMax.y, in_bbMax.z);
   if (!m_data)
     Log("Error: Could not create grid size %d x %d. Out of memory?\n", m_width, m_height);
   else
     Log("Created grid size %d x %d.\n", m_width, m_height);
-  m_bbMax = Xi_bbMin + CVec3(m_width*Xi_res, m_height*Xi_res, 1000.0);
+  m_bbMax = in_bbMin + CVec3(m_width*in_res, m_height*in_res, 1000.0);
 }
 
 
-CGrid2dBase::CGrid2dBase(int Xi_width, int Xi_height, const CVec3& Xi_bbMin, float Xi_res, int Xi_stride)
+CGrid2dBase::CGrid2dBase(int in_width, int in_height, const CVec3& in_bbMin, float in_res, int in_stride)
 {
   m_data = 0;
-  m_bbMin = Xi_bbMin;
-  m_res = Xi_res;
-  m_invRes = 1.0f / Xi_res;
+  m_bbMin = in_bbMin;
+  m_res = in_res;
+  m_invRes = 1.0f / in_res;
 
-  m_width = Xi_width;
-  m_height = Xi_height;
-  m_stride = Xi_stride;
-  m_lineSize = Xi_width * Xi_stride;
+  m_width = in_width;
+  m_height = in_height;
+  m_stride = in_stride;
+  m_lineSize = in_width * in_stride;
 
   // check that the bounding box is valid
-  if ( !IsValid(Xi_bbMin) )
+  if ( !IsValid(in_bbMin) )
   {
     Log("Error: bounding box is invalid (NaN or inf)\n");
     return;
@@ -141,12 +141,12 @@ CGrid2dBase::CGrid2dBase(int Xi_width, int Xi_height, const CVec3& Xi_bbMin, flo
     return;
   }
 
-  m_data = new char[Xi_width*Xi_height*Xi_stride];
+  m_data = new char[in_width*in_height*in_stride];
   if (!m_data)
     Log("Could not create grid size %d x %d. Out of memory?\n", m_width, m_height);
   else
     Log("Created grid size %d x %d.\n", m_width, m_height);
-  m_bbMax = Xi_bbMin + CVec3(Xi_width*Xi_res, Xi_height*Xi_res, 1000.0);
+  m_bbMax = in_bbMin + CVec3(in_width*in_res, in_height*in_res, 1000.0);
 }
 
 
@@ -171,69 +171,69 @@ void CGrid2dBase::Clear()
 
 
 /** get cell index using world coordinates */
-int CGrid2dBase::GetIndex(const CVec3& Xi_pos) const
+int CGrid2dBase::GetIndex(const CVec3& in_pos) const
 {
-  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
+  CVec3 l_v = (in_pos - m_bbMin) * m_invRes;
   return GetIndex((int)l_v.x, (int)l_v.y);
 }
 
 
 /** get cell using world coordinates */
-void* CGrid2dBase::Get(const CVec3& Xi_pos)
+void* CGrid2dBase::Get(const CVec3& in_pos)
 {
-  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
+  CVec3 l_v = (in_pos - m_bbMin) * m_invRes;
   int l_x = (int)l_v.x;
   int l_y = (int)l_v.y;
   return Get(l_x, l_y);
 }
 
 /** get cell using world coordinates */
-const void* CGrid2dBase::Get(const CVec3& Xi_pos) const
+const void* CGrid2dBase::Get(const CVec3& in_pos) const
 {
-  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
+  CVec3 l_v = (in_pos - m_bbMin) * m_invRes;
   int l_x = (int)l_v.x;
   int l_y = (int)l_v.y;
   return Get(l_x, l_y);
 }
 
 
-void CGrid2dBase::Convert(const CVec3& Xi_pos, int& Xi_cellX, int& Xi_cellY) const
+void CGrid2dBase::Convert(const CVec3& in_pos, int& in_cellX, int& in_cellY) const
 {
-  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
-  Xi_cellX = (int)l_v.x;
-  Xi_cellY = (int)l_v.y;
+  CVec3 l_v = (in_pos - m_bbMin) * m_invRes;
+  in_cellX = (int)l_v.x;
+  in_cellY = (int)l_v.y;
 }
 
 
-void CGrid2dBase::ConvertSafe(const CVec3& Xi_pos, int& Xi_cellX, int& Xi_cellY) const
+void CGrid2dBase::ConvertSafe(const CVec3& in_pos, int& in_cellX, int& in_cellY) const
 {
-  CVec3 l_v = (Xi_pos - m_bbMin) * m_invRes;
-  Xi_cellX = (int)l_v.x;
-  Xi_cellY = (int)l_v.y;
-  Xi_cellX = Clamp(Xi_cellX, 0, m_width);
-  Xi_cellY = Clamp(Xi_cellY, 0, m_height);
+  CVec3 l_v = (in_pos - m_bbMin) * m_invRes;
+  in_cellX = (int)l_v.x;
+  in_cellY = (int)l_v.y;
+  in_cellX = Clamp(in_cellX, 0, m_width);
+  in_cellY = Clamp(in_cellY, 0, m_height);
 }
 
 
-void CGrid2dBase::Transform(const CVec3& Xi_shift, float scale)
+void CGrid2dBase::Transform(const CVec3& in_shift, float scale)
 {
   CVec3 l_extent = (m_bbMax - m_bbMin) * scale;
-  m_bbMin += Xi_shift;
+  m_bbMin += in_shift;
   m_bbMax = m_bbMin + l_extent;
 }
 
 
-bool CGrid2dBase::U_RasterizeTri(const CVec3& Xi_v0, const CVec3& Xi_v1, const CVec3& Xi_v2, int Xi_info)
+bool CGrid2dBase::U_RasterizeTri(const CVec3& in_v0, const CVec3& in_v1, const CVec3& in_v2, int in_info)
 {
-  CVertexUV l_v0(Xi_v0, CVec3(0,0,0));
-  CVertexUV l_v1(Xi_v1, CVec3(1,0,0));
-  CVertexUV l_v2(Xi_v2, CVec3(1,1,0));
-  return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&Xi_info);
+  CVertexUV l_v0(in_v0, CVec3(0,0,0));
+  CVertexUV l_v1(in_v1, CVec3(1,0,0));
+  CVertexUV l_v2(in_v2, CVec3(1,1,0));
+  return U_RasterizeTri(l_v0, l_v1, l_v2, 1, 1, (unsigned int*)&in_info);
 }
 
 
-bool CGrid2dBase::U_RasterizeTri(const CVertexUV& /*Xi_v0*/, const CVertexUV& /*Xi_v1*/, const CVertexUV& /*Xi_v2*/,
-                               int /*Xi_imgWidth*/, int /*Xi_imgHeight*/, const unsigned int* /*Xi_img*/)
+bool CGrid2dBase::U_RasterizeTri(const CVertexUV& /*in_v0*/, const CVertexUV& /*in_v1*/, const CVertexUV& /*in_v2*/,
+                               int /*in_imgWidth*/, int /*in_imgHeight*/, const unsigned int* /*in_img*/)
 {
   return false;
 }

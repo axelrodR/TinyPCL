@@ -1,8 +1,3 @@
-/******************************************************************************
-*
-*: Package Name: sldrcr_ftr
-*
-******************************************************************************/
 #include "RegICP.h"
 #include "SpatialHash.h"
 #include "common.h"
@@ -10,63 +5,32 @@
 #include "../../include/vec.h"
 #include "../include/ptCloud.h"
 
-//#include <D3dx9core.h> // uncommenet if using DirectX
-////#include <ifr/ifrgen/ifrgen_stnd.h>
-//#include "sldrcr_icp.h"
-//#include <gen/gengmtrx/gengmtrx_vec.h>
-//#include <IFR\ifrlog\ifrlog_prfl.h>
-
 #define SIGN(a,b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
 
 
 namespace tpcl
 {
-
-  /******************************************************************************
-  *                             INTERNAL CONSTANTS  / Functions                 *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                        INCOMPLETE CLASS DECLARATIONS                        *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                       FORWARD FUNCTION DECLARATIONS                         *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                             STATIC VARIABLES                                *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                      CLASS STATIC MEMBERS INITIALIZATION                    *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                              INTERNAL CLASSES                               *
-  ******************************************************************************/
   /** Try to find match in point cloud for another point.
   * Currently we match by finding closest point within a given threshold radius ("inliers")
-  * @param Xi_pcl1    	    Spatial hashing of main point cloud.
-  * @param Xi_p2            a point from 2nd point cloud.
-  * @param Xi_normal        !!curently not used!! - normal of the point to which we want to find a match.
-  * @param Xo_match         match found.
+  * @param in_pcl1    	    Spatial hashing of main point cloud.
+  * @param in_p2            a point from 2nd point cloud.
+  * @param in_normal        !!curently not used!! - normal of the point to which we want to find a match.
+  * @param out_match         match found.
   * @param indist           inline distance. 
   * return                  true if a match was found, flase otherwise*/
-  bool MatchPoint(const CSpatialHash2D& Xi_pcl1, const CVec3& Xi_p2, const CVec3& Xi_normal, const double Xi_distThreshold, CVec3& Xo_match, double& Xo_dist)
+  bool MatchPoint(const CSpatialHash2D& in_pcl1, const CVec3& in_p2, const CVec3& in_normal, const double in_distThreshold, CVec3& out_match, double& out_dist)
   {
-    // go over retrieved list (if size = 0, return false), check if closer than Xi_distThreshold, update Xo_match if better normal match. return true.
-    if (Xi_pcl1.FindNearest(Xi_p2, &Xo_match, float(Xi_distThreshold))) // search nearest neighbor
+    // go over retrieved list (if size = 0, return false), check if closer than in_distThreshold, update out_match if better normal match. return true.
+    if (in_pcl1.FindNearest(in_p2, &out_match, float(in_distThreshold))) // search nearest neighbor
     {
       // check if it is an inlier
-      Xo_dist = Dist(Xi_p2, Xo_match);
-      if (Xo_dist < Xi_distThreshold)
+      out_dist = Dist(in_p2, out_match);
+      if (out_dist < in_distThreshold)
         return true;
     }
     // if no match/neighbor found closer than indist, return false
     return false;
   }
-
 
 
   /** calculates pythagoras output = sqrt(a^2 + b^2) */
@@ -82,9 +46,8 @@ namespace tpcl
   }
 
 
-
   // build bidiagonal form of using Householder reduction
-  void BiDiag(double Xio_U[3][3], double Xo_W[3], double Xo_V[3][3], double rv1[4])
+  void BiDiag(double io_U[3][3], double out_W[3], double out_V[3][3], double rv1[4])
   {
     // Householder reduction to bidiagonal form.
     int i, j, k;
@@ -97,100 +60,100 @@ namespace tpcl
 
       // act on columns
       for (k = i; k<3; k++)
-        s += Xio_U[k][i] * Xio_U[k][i];
+        s += io_U[k][i] * io_U[k][i];
       if (s)
       {
-        f = Xio_U[i][i];
+        f = io_U[i][i];
         g = -SIGN(sqrt(s), f);
         h = f*g - s;
-        Xio_U[i][i] = f - g;
+        io_U[i][i] = f - g;
         for (j = i + 1; j<3; j++)
         {
           for (s = 0.0, k = i; k<3; k++)
-            s += Xio_U[k][i] * Xio_U[k][j];
+            s += io_U[k][i] * io_U[k][j];
           f = s / h;
           for (k = i; k<3; k++)
-            Xio_U[k][j] += f*Xio_U[k][i];
+            io_U[k][j] += f*io_U[k][i];
         }
       }
-      Xo_W[i] = g;
+      out_W[i] = g;
 
       // act on rows
       g = s = 0.0;
       for (k = i + 1; k < 3; k++)
-        s += Xio_U[i][k] * Xio_U[i][k];
+        s += io_U[i][k] * io_U[i][k];
       if (s)
       {
-        f = Xio_U[i][i + 1];
+        f = io_U[i][i + 1];
         g = -SIGN(sqrt(s), f);
         h = f*g - s;
-        Xio_U[i][i + 1] = f - g;
+        io_U[i][i + 1] = f - g;
         for (k = i + 1; k<3; k++)
-          rv1[k] = Xio_U[i][k] / h;
+          rv1[k] = io_U[i][k] / h;
         for (j = i + 1; j<3; j++)
         {
           for (s = 0.0, k = i + 1; k<3; k++)
-            s += Xio_U[j][k] * Xio_U[i][k];
+            s += io_U[j][k] * io_U[i][k];
           for (k = i + 1; k<3; k++)
-            Xio_U[j][k] += s*rv1[k];
+            io_U[j][k] += s*rv1[k];
         }
       }
     }
 
     // Accumulation of right-hand transformations.
-    Xo_V[2][2] = 1.0;
+    out_V[2][2] = 1.0;
     g = rv1[2];
     for (i = 2; i >= 0; i--)
     {
       if (g)
       {
         for (j = i + 1; j<3; j++)
-          Xo_V[j][i] = (Xio_U[i][j] / Xio_U[i][i + 1]) / g;   // Double division to avoid possible underflow.
+          out_V[j][i] = (io_U[i][j] / io_U[i][i + 1]) / g;   // Double division to avoid possible underflow.
         for (j = i + 1; j<3; j++)
         {
           for (s = 0.0, k = i + 1; k<3; k++)
-            s += Xio_U[i][k] * Xo_V[k][j];
+            s += io_U[i][k] * out_V[k][j];
           for (k = i + 1; k<3; k++)
-            Xo_V[k][j] += s*Xo_V[k][i];
+            out_V[k][j] += s*out_V[k][i];
         }
       }
       for (j = i + 1; j<3; j++)
-        Xo_V[i][j] = Xo_V[j][i] = 0.0;
-      Xo_V[i][i] = 1.0;
+        out_V[i][j] = out_V[j][i] = 0.0;
+      out_V[i][i] = 1.0;
       g = rv1[i];
     }
 
     // Accumulation of left-hand transformations.
     for (i = 2; i >= 0; i--)
     {
-      g = Xo_W[i];
+      g = out_W[i];
       for (j = i + 1; j<3; j++)
-        Xio_U[i][j] = 0.0;
+        io_U[i][j] = 0.0;
       if (g)
       {
         g = 1.0 / g;
         for (j = i + 1; j<3; j++)
         {
           for (s = 0.0, k = i + 1; k<3; k++)
-            s += Xio_U[k][i] * Xio_U[k][j];
-          f = (s / Xio_U[i][i])*g;
+            s += io_U[k][i] * io_U[k][j];
+          f = (s / io_U[i][i])*g;
           for (k = i; k<3; k++)
-            Xio_U[k][j] += f*Xio_U[k][i];
+            io_U[k][j] += f*io_U[k][i];
         }
         for (j = i; j<3; j++)
-          Xio_U[j][i] *= g;
+          io_U[j][i] *= g;
       }
       else
         for (j = i; j<3; j++)
-          Xio_U[j][i] = 0.0;
-      ++Xio_U[i][i];
+          io_U[j][i] = 0.0;
+      ++io_U[i][i];
     }
   }
 
 
 
   // compute the SVD of a 3x3 matrix
-  bool svd3x3(const double Xi_M[3][3], double Xo_U[3][3], double Xo_W[3], double Xo_V[3][3])
+  bool svd3x3(const double in_M[3][3], double out_U[3][3], double out_W[3], double out_V[3][3])
   {
     double w[3];
     double rv1[3];
@@ -199,10 +162,10 @@ namespace tpcl
     double c, f, g, h, s, x, y, z;
 
     for (i = 0; i < 9; ++i)
-      Xo_U[0][i] = Xi_M[0][i];
+      out_U[0][i] = in_M[0][i];
 
     // convert to bidiagonal form
-    BiDiag(Xo_U, w, Xo_V, rv1);
+    BiDiag(out_U, w, out_V, rv1);
 
     // claculate scale of stuff
     double anorm = fabs(w[0]) + fabs(rv1[0]);
@@ -249,10 +212,10 @@ namespace tpcl
             s = -f*h;
             for (j = 0; j<3; j++)
             {
-              y = Xo_U[j][nm];
-              z = Xo_U[j][i];
-              Xo_U[j][nm] = y*c + z*s;
-              Xo_U[j][i] = z*c - y*s;
+              y = out_U[j][nm];
+              z = out_U[j][i];
+              out_U[j][nm] = y*c + z*s;
+              out_U[j][i] = z*c - y*s;
             }
           }
         }
@@ -263,7 +226,7 @@ namespace tpcl
           { // Singular value is made nonnegative.
             w[k] = -z;
             for (j = 0; j<3; j++)
-              Xo_V[j][k] = -Xo_V[j][k];
+              out_V[j][k] = -out_V[j][k];
           }
           break;
         }
@@ -295,10 +258,10 @@ namespace tpcl
           y *= c;
           for (jj = 0; jj<3; jj++)
           {
-            x = Xo_V[jj][j];
-            z = Xo_V[jj][i];
-            Xo_V[jj][j] = x*c + z*s;
-            Xo_V[jj][i] = z*c - x*s;
+            x = out_V[jj][j];
+            z = out_V[jj][i];
+            out_V[jj][j] = x*c + z*s;
+            out_V[jj][i] = z*c - x*s;
           }
           z = pythag(f, h);
           w[j] = z; // Rotation can be arbitrary if z = 0.
@@ -312,10 +275,10 @@ namespace tpcl
           x = c*y - s*g;
           for (jj = 0; jj<3; jj++)
           {
-            y = Xo_U[jj][j];
-            z = Xo_U[jj][i];
-            Xo_U[jj][j] = y*c + z*s;
-            Xo_U[jj][i] = z*c - y*s;
+            y = out_U[jj][j];
+            z = out_U[jj][i];
+            out_U[jj][j] = y*c + z*s;
+            out_U[jj][i] = z*c - y*s;
           }
         }
         rv1[l] = 0.0;
@@ -335,25 +298,25 @@ namespace tpcl
     {
       sw = w[i];
       for (k = 0; k<3; k++)
-        su[k] = Xo_U[k][i];
+        su[k] = out_U[k][i];
       for (k = 0; k<3; k++)
-        sv[k] = Xo_V[k][i];
+        sv[k] = out_V[k][i];
       j = i;
       while (w[j - 1] < sw)
       {
         w[j] = w[j - 1];
         for (k = 0; k<3; k++)
-          Xo_U[k][j] = Xo_U[k][j - 1];
+          out_U[k][j] = out_U[k][j - 1];
         for (k = 0; k<3; k++)
-          Xo_V[k][j] = Xo_V[k][j - 1];
+          out_V[k][j] = out_V[k][j - 1];
         j -= 1;
         if (j < 1) break;
       }
       w[j] = sw;
       for (k = 0; k<3; k++)
-        Xo_U[k][j] = su[k];
+        out_U[k][j] = su[k];
       for (k = 0; k<3; k++)
-        Xo_V[k][j] = sv[k];
+        out_V[k][j] = sv[k];
     }
 
     // flip signs
@@ -361,28 +324,28 @@ namespace tpcl
     {
       s2 = 0;
       for (i = 0; i<3; i++)
-        if (Xo_U[i][k] < 0.0)
+        if (out_U[i][k] < 0.0)
           s2++;
       for (j = 0; j<3; j++)
-        if (Xo_V[j][k] < 0.0)
+        if (out_V[j][k] < 0.0)
           s2++;
       if (s2 > 3)
       {
         for (i = 0; i<3; i++)
-          Xo_U[i][k] = -Xo_U[i][k];
+          out_U[i][k] = -out_U[i][k];
         for (j = 0; j<3; j++)
-          Xo_V[j][k] = -Xo_V[j][k];
+          out_V[j][k] = -out_V[j][k];
       }
     }
 
     // create vector and copy singular values
     for (int r = 0; r < 3; r++)
-      Xo_W[r] = w[r];
+      out_W[r] = w[r];
     return true;
   }
 
 
-  bool svd3x3(double* Xi_M, CMat4& Xo_U, CMat4& Xo_W, CMat4& Xo_V)
+  bool svd3x3(double* in_M, CMat4& out_U, CMat4& out_W, CMat4& out_V)
   {
     const int M1size = 3;
     double M[M1size][M1size] = { 0 };
@@ -394,7 +357,7 @@ namespace tpcl
     {
       for (int col = 0; col < M1size; col++)
       {
-        M[row][col] = Xi_M[row*M1size + col];
+        M[row][col] = in_M[row*M1size + col];
       }
     }
     bool convergence = svd3x3(M, U, W, V);
@@ -405,20 +368,20 @@ namespace tpcl
       {
         for (int col = 0; col < M1size; col++)
         {
-          Xo_U.m[row][col] = (float)U[row][col];
-          Xo_W.m[row][col] = 0.f;
-          Xo_V.m[row][col] = (float)V[row][col];
+          out_U.m[row][col] = (float)U[row][col];
+          out_W.m[row][col] = 0.f;
+          out_V.m[row][col] = (float)V[row][col];
         }
-        Xo_W.m[row][row] = (float)W[row];
+        out_W.m[row][row] = (float)W[row];
       }
 
       for (int i = 0; i < M1size; ++i)
       {
-        Xo_U.m[M1size][i] = Xo_U.m[i][M1size] = 0.f;
-        Xo_W.m[M1size][i] = Xo_W.m[i][M1size] = 0.f;
-        Xo_V.m[M1size][i] = Xo_V.m[i][M1size] = 0.f;
+        out_U.m[M1size][i] = out_U.m[i][M1size] = 0.f;
+        out_W.m[M1size][i] = out_W.m[i][M1size] = 0.f;
+        out_V.m[M1size][i] = out_V.m[i][M1size] = 0.f;
       }
-      Xo_U.m[M1size][M1size] = Xo_W.m[3][3] = Xo_V.m[M1size][M1size] = 1.f;
+      out_U.m[M1size][M1size] = out_W.m[3][3] = out_V.m[M1size][M1size] = 1.f;
     }
 
     return convergence;
@@ -427,11 +390,11 @@ namespace tpcl
 
   typedef TVec3<double> CVec3D;
 
-  void PerformIter(CSpatialHash2D& Xi_pcl1, const CPtCloud& Xi_pcl2, CMat4& Xio_Rt, const float Xi_regRes, double& Xo_transformationChange, double& Xo_PreviousFitnessScore)
+  void PerformIter(CSpatialHash2D& in_pcl1, const CPtCloud& in_pcl2, CMat4& io_Rt, const float in_regRes, double& out_transformationChange, double& out_PreviousFitnessScore)
   {
-    //double l_distThreshold = 2 * Xi_regRes;
-    double l_scoreDistThreshold = 2 * Xi_regRes;
-    double l_regDistThreshold = 2 * Xi_regRes;   //l_regDistThreshold <= l_scoreDistThreshold
+    //double l_distThreshold = 2 * in_regRes;
+    double l_scoreDistThreshold = 2 * in_regRes;
+    double l_regDistThreshold = 2 * in_regRes;   //l_regDistThreshold <= l_scoreDistThreshold
     double l_accError = 0;
     // extract matrix and translation vector
     CVec3D l_massCenter1(0, 0 ,0), l_massCenter2(0, 0, 0);  // center of masses for both clouds (as doubles)
@@ -445,22 +408,22 @@ namespace tpcl
     {
       CVec3D partialMC1(0, 0, 0), partialMC2(0, 0, 0);
       double partialH[9] = { 0 };
-      CVec3* pts1Matched = new CVec3[Xi_pcl2.m_numPts];
-      CVec3* pts2Matched = new CVec3[Xi_pcl2.m_numPts]; //and transformed.
+      CVec3* pts1Matched = new CVec3[in_pcl2.m_numPts];
+      CVec3* pts2Matched = new CVec3[in_pcl2.m_numPts]; //and transformed.
       int numPts = 0;
 
       // establish correspondences
       #pragma omp for reduction(+:matchSize, accErrorSize, l_accError)
-      for (int i = 0; i<Xi_pcl2.m_numPts; i++)
+      for (int i = 0; i<in_pcl2.m_numPts; i++)
       {
         // transform point according to R|t
-        MultiplyVectorRightSidePlusOffset(Xio_Rt, Xi_pcl2.m_pos[i], pts2Matched[numPts]);
+        MultiplyVectorRightSidePlusOffset(io_Rt, in_pcl2.m_pos[i], pts2Matched[numPts]);
 
 
         // search nearest neighbor
         CVec3 normal(0, 0, 1);
         double l_dist;
-        if (!MatchPoint(Xi_pcl1, pts2Matched[numPts], normal, l_scoreDistThreshold, pts1Matched[numPts], l_dist))
+        if (!MatchPoint(in_pcl1, pts2Matched[numPts], normal, l_scoreDistThreshold, pts1Matched[numPts], l_dist))
           continue;   // no nearest point within radius
         
         l_accError += Dist(pts2Matched[numPts], pts1Matched[numPts]);
@@ -488,7 +451,7 @@ namespace tpcl
       {
         //TODO: see if matchSize == 0 -> Zero points were matched with current registration
 
-        Xo_PreviousFitnessScore = l_accError / accErrorSize;
+        out_PreviousFitnessScore = l_accError / accErrorSize;
         l_massCenter1 /= (double)matchSize;
         l_massCenter2 /= (double)matchSize;
         l_massCenter1f = CVec3(float(l_massCenter1.x), float(l_massCenter1.y), float(l_massCenter1.z));
@@ -541,40 +504,38 @@ namespace tpcl
     CVec3 tChange = l_massCenter1f - R_mut;
 
     // compose: R|t = R_|t_ * R|t
-    Xio_Rt = RChange * Xio_Rt;
-    CVec3 t(Xio_Rt.m[3][0], Xio_Rt.m[3][1], Xio_Rt.m[3][2]);
+    io_Rt = RChange * io_Rt;
+    CVec3 t(io_Rt.m[3][0], io_Rt.m[3][1], io_Rt.m[3][2]);
     MultiplyVectorRightSide(RChange, t, R_mut);
     t = R_mut + tChange;
-    Xio_Rt.m[3][0] = t.x;    Xio_Rt.m[3][1] = t.y;    Xio_Rt.m[3][2] = t.z; Xio_Rt.m[3][3] = 1;
+    io_Rt.m[3][0] = t.x;    io_Rt.m[3][1] = t.y;    io_Rt.m[3][2] = t.z; io_Rt.m[3][3] = 1;
 
     // return max delta in parameters
     RChange.m[3][0] = tChange.x;    RChange.m[3][1] = tChange.y;    RChange.m[3][2] = tChange.z;
     double length_mat, length_vec;
     Lengths(RChange, length_mat, length_vec);
 
-    Xo_transformationChange = length_mat + length_vec;
+    out_transformationChange = length_mat + length_vec;
   }
 
 
-
-
-  double FinalError(CSpatialHash2D& Xi_pcl1, const CPtCloud& Xi_pcl2, const CMat4& Xi_Rt, const double Xi_scoreDistThreshold)
+  double FinalError(CSpatialHash2D& in_pcl1, const CPtCloud& in_pcl2, const CMat4& in_Rt, const double in_scoreDistThreshold)
   {
     double l_accError = 0;
     int accErrorSize = 0;
 
     // extract matrix and translation vector
-    for (int i = 0; i<Xi_pcl2.m_numPts; i++)
+    for (int i = 0; i<in_pcl2.m_numPts; i++)
     {
       CVec3 transformedPt;
       CVec3 closestPt;
 
       // transform point according to R|t
-      MultiplyVectorRightSidePlusOffset(Xi_Rt, Xi_pcl2.m_pos[i], transformedPt);
+      MultiplyVectorRightSidePlusOffset(in_Rt, in_pcl2.m_pos[i], transformedPt);
       // search for match
       CVec3 normal(0, 0, 1);
       double dist;
-      if (!MatchPoint(Xi_pcl1, transformedPt, normal, Xi_scoreDistThreshold, closestPt, dist))
+      if (!MatchPoint(in_pcl1, transformedPt, normal, in_scoreDistThreshold, closestPt, dist))
         continue;
       l_accError += Dist(transformedPt, closestPt);
       accErrorSize++;
@@ -585,16 +546,10 @@ namespace tpcl
   }
 
 
-  /******************************************************************************
-  *                           EXPORTED CLASS METHODS                            *
-  ******************************************************************************/
 
   /******************************************************************************
-  *                               Public methods                                *
-  ******************************************************************************/
-  /******************************************************************************
   *
-  *: Method name: SLDR_ICP_ICP
+  *: Class name: ICP
   *
   ******************************************************************************/
   ICP::ICP()
@@ -602,28 +557,18 @@ namespace tpcl
     initMembers();
   }
 
-  ICP::ICP(float Xi_regRes)
+  ICP::ICP(float in_regRes)
   {
     initMembers();
-    m_regRes = Xi_regRes;
+    m_regRes = in_regRes;
   }
 
-  /******************************************************************************
-  *
-  *: Method name: ~SLDR_ICP_ICP
-  *
-  ******************************************************************************/
   ICP::~ICP()
   {
     if (!m_outsourceMainPC)
       delete m_mainHashed;
   }
 
-  /******************************************************************************
-  *
-  *: Method name: MainPointCloudUpdate
-  *
-  ******************************************************************************/
   void ICP::SetMainPtCloud(const CPtCloud& in_pcl, bool in_append)
   {
     if (m_outsourceMainPC)
@@ -641,55 +586,39 @@ namespace tpcl
     }
   }
 
-  void ICP::SetMainPtCloud(CSpatialHash2D* Xi_mainHashed)
+  void ICP::SetMainPtCloud(CSpatialHash2D* in_mainHashed)
   {
     if (!m_outsourceMainPC)
     {
       delete m_mainHashed;
     }
 
-    m_mainHashed = Xi_mainHashed;
+    m_mainHashed = in_mainHashed;
     m_outsourceMainPC = true;
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: getMainHashedPtr
-  *
-  ******************************************************************************/
   void* ICP::getMainHashedPtr()
   {
     return m_mainHashed;
   }
 
 
-  /******************************************************************************
-  *
-  *: Method name: setRegistrationThresh
-  *
-  ******************************************************************************/
-  void ICP::setRegistrationResolution(float Xi_regRes)
+  void ICP::setRegistrationResolution(float in_regRes)
   {
-    m_regRes = Xi_regRes;
+    m_regRes = in_regRes;
   };
 
 
-
-  /******************************************************************************
-  *
-  *: Method name: FillPointCloud
-  *
-  ******************************************************************************/
-  float ICP::RegisterCloud(const CPtCloud& Xi_pcl, CMat4& Xo_registration, CMat4* Xi_estimatedOrient)
+  float ICP::RegisterCloud(const CPtCloud& in_pcl, CMat4& out_registration, CMat4* in_estimatedOrient)
   {
-    //TODO: see if Xi_pcl.m_numPts <5 -> ICP registration called with less than 5 points
+    //TODO: see if in_pcl.m_numPts <5 -> ICP registration called with less than 5 points
 
     // initial guess of orientation
-    if (Xi_estimatedOrient)
-      Xo_registration = *Xi_estimatedOrient;
+    if (in_estimatedOrient)
+      out_registration = *in_estimatedOrient;
     else
-      MatrixIdentity(&Xo_registration);
+      MatrixIdentity(&out_registration);
 
 
     double l_transformationEpsilon = 0.75 * m_regRes;
@@ -698,18 +627,18 @@ namespace tpcl
     double l_transformationChange;
     double l_PreviousFitnessScore;
 
-    PerformIter(*m_mainHashed, Xi_pcl, Xo_registration, m_regRes, l_transformationChange, l_PreviousFitnessScore);
+    PerformIter(*m_mainHashed, in_pcl, out_registration, m_regRes, l_transformationChange, l_PreviousFitnessScore);
     bool converged = (l_PreviousFitnessScore < l_fitnessEpsilon) || (l_transformationChange <= l_transformationEpsilon);
 
     int l_iterLeft = 150;
     while (!converged)
     {
-      PerformIter(*m_mainHashed, Xi_pcl, Xo_registration, m_regRes, l_transformationChange, l_PreviousFitnessScore);
+      PerformIter(*m_mainHashed, in_pcl, out_registration, m_regRes, l_transformationChange, l_PreviousFitnessScore);
       l_iterLeft--;
       converged = (l_PreviousFitnessScore < l_fitnessEpsilon) || (l_transformationChange < l_transformationEpsilon) || (l_iterLeft == 0);
     }
 
-    return float(FinalError(*m_mainHashed, Xi_pcl, Xo_registration, 5 * m_regRes));
+    return float(FinalError(*m_mainHashed, in_pcl, out_registration, 5 * m_regRes));
   }
 
 
@@ -724,20 +653,5 @@ namespace tpcl
     m_mainHashed->Clear();
     m_outsourceMainPC = false;
   }
-
-
-  /******************************************************************************
-  *                              Private methods                                *
-  ******************************************************************************/
-
-
-  /******************************************************************************
-  *                            EXPORTED FUNCTIONS                               *
-  ******************************************************************************/
-
-  /******************************************************************************
-  *                            INTERNAL FUNCTIONS                               *
-  ******************************************************************************/
-  //////////////////////////////////////////////////////////////////
 
 } //namespace tpcl
