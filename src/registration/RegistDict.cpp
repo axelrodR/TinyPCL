@@ -145,11 +145,8 @@ namespace tpcl
     ptsPrePro.m_numPts = in_pcl.m_numPts; ptsPrePro.m_pos = new CVec3[in_pcl.m_numPts];
 
     //preprocess local cloud:
-    //if (in_pcl.m_type == PCL_TYPE_SINGLE_ORIGIN_SCAN)
-    //{
-      //int lineHeight = in_pcl.m_numPts / in_pcl.m_lineWidth;
+    if (in_pcl.m_type == PCL_TYPE_SINGLE_ORIGIN_SCAN)
       feat.DenoiseRange(in_pcl, ptsPrePro, optsP->m_medFiltSize0, optsP->m_distFromMedianThresh);
-    //}
     //else
     //{
     //  float res = float(2 * M_PI) / (128 * 5);

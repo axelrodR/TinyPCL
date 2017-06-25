@@ -23,6 +23,7 @@ namespace tpcl
     case REGISTRATION_TYPE_ICP: return new ICP();
     case REGISTRATION_TYPE_POV: return new CCoarseRegister();
     }
+    return 0;
   }
 
 

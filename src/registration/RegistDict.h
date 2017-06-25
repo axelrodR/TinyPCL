@@ -74,7 +74,7 @@ namespace tpcl
 
     /** Get registration for a secondary point cloud against the main cloud
     * The second cloud is not stored
-    * //TODO/// !!!!currently not supporting unordered point cloud!!!!
+    * //TODO/// currently not supporting range Denoising for unordered point cloud!
     * @param in_pcl               secondary point cloud. //TODO/// - arranged by azimuth and latitude. i.e. row_i > row_j -> latitude_i > latitude_j. col_i > col_j -> azimuth_i > azimuth_j.
     * @param out_registration      best registration found.
     * @param in_estimatedOrient   estimation of registration, if 0 then estimation is identity.

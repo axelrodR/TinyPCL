@@ -396,7 +396,11 @@ namespace tpcl
           {
             int index = row*m_descWidth + col;
 
-            if ((out_RangeImage[index] == 0) || (partialRangeImage[index] < out_RangeImage[index]))
+            if (
+              (out_RangeImage[index] == 0)
+              ||
+              ((partialRangeImage[index] != 0) && (partialRangeImage[index] < out_RangeImage[index]))
+              )
               out_RangeImage[index] = partialRangeImage[index];
           }
       }
