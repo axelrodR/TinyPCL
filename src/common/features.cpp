@@ -210,7 +210,7 @@ namespace tpcl
 
         //find plane:
         CPlane approxPlane;
-        if (approxPlane.RanSaC(numOfClose, closePts, 1.0f) == 0)
+        if (approxPlane.RanSaC(numOfClose, closePts, 0.1f) == 0)
           io_pcl.m_normal[ptIndex] = CVec3(0, 0, 1); //TODO: desice what to do if not enoguh points.
         else
         {
@@ -386,5 +386,30 @@ namespace tpcl
     RMSE /= in_pcl2.m_numPts;
     return float(sqrt(RMSE));
   }
+
+
+  void Features::CalcRotateMatZaxisToNormal(const CVec3& Xi_Normal, CMat4& Xo_RotateMat, const CVec3& Xi_Pos)
+  {
+    //find refFrame matrix:
+    //zVec = Xi_Normal
+    CVec3 xVec(1, 0, 0);
+    xVec = xVec - DotProd(xVec, Xi_Normal)*Xi_Normal;
+    Normalize(xVec);
+    CVec3 yVec = CrossProd(Xi_Normal, xVec);
+    Normalize(yVec);
+
+    //update transformation matrix:
+    //float OrientVals[] = { xVec.x   , yVec.x  , Xi_Normal.x, 0.0f,
+    //                       xVec.y   , yVec.y  , Xi_Normal.y, 0.0f,
+    //                       xVec.z   , yVec.z  , Xi_Normal.z, 0.0f,
+    //                       Xi_Pos.x , Xi_Pos.y, Xi_Pos.z   , 1.0f };
+    //TODO: temp logic fix to rotate matrix direction ambiguity, waiting for David's reply.
+    float OrientVals[] = { xVec.x     , xVec.y     , xVec.z     , 0.0f,
+      yVec.x     , yVec.y     , yVec.z     , 0.0f,
+      Xi_Normal.x, Xi_Normal.y, Xi_Normal.z, 0.0f,
+      Xi_Pos.x   , Xi_Pos.y   , Xi_Pos.z   , 1.0f };
+    Xo_RotateMat = CMat4(OrientVals);
+  }
+
 
 } //namespace SLDR

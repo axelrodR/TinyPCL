@@ -138,6 +138,7 @@ namespace tpcl
 
   // multiplication in place
   template <typename T> inline void Multiply(const TMat4<T>& lhs, const TVec3<T>& rhs, TMat4<T>& res);
+  template <typename TMat4> inline void LeftMultiplyKeepVector(const TMat4& lhs, const TMat4& rhs, TMat4& res);
   template <typename TMat4, typename TVec3> inline void TransposeLeftMultiply(const TMat4& lhs, const TVec3& rhs, TMat4& res);
   template <typename TMat4, typename TVec3> inline void MultiplyVectorRightSide(const TMat4& lhs, const TVec3& rhs, TVec3& res);
   template <typename TMat4, typename TVec3> inline void MultiplyVectorRightSidePlusOffset(const TMat4& lhs, const TVec3& rhs, TVec3& res);
@@ -559,6 +560,21 @@ namespace tpcl
       for (int c=0; c<4; ++c)
         tmp.m[r][c] = lhs.m[r][0]*rhs.m[0][c] + lhs.m[r][1]*rhs.m[1][c] + lhs.m[r][2]*rhs.m[2][c] + lhs.m[r][3]*rhs.m[3][c];
     }
+    res = tmp;
+  }
+
+  template <typename TMat4>
+  inline void LeftMultiplyKeepVector(const TMat4& lhs, const TMat4& rhs, TMat4& res)
+  {
+    TMat4 tmp;
+    for (int r = 0; r<3; ++r)
+    {
+      for (int c = 0; c<4; ++c)
+        tmp.m[r][c] = lhs.m[r][0] * rhs.m[0][c] + lhs.m[r][1] * rhs.m[1][c] + lhs.m[r][2] * rhs.m[2][c] + lhs.m[r][3] * rhs.m[3][c];
+    }
+    int r = 3;
+    for (int c = 0; c<4; ++c)
+      tmp.m[r][c] = lhs.m[r][c];
     res = tmp;
   }
 

@@ -98,6 +98,12 @@ namespace tpcl
     * return                 RMSE of registration. */
     virtual float RMSEofRegistration(CSpatialHash2D* in_pcl1, const CPtCloud& in_pcl2, float in_max2DRadius, const CMat4& in_Rt);
 
+
+    /** finds the rotation matrix so that the new z axis will be in the normal direction. to be used: x_rotated = R * x.
+    * @param Xi_Normal          input normal.
+    * @param Xo_RotateMat       output rotation matrix.
+    * @param Xi_Pos             optional: input vector to replace the default vector in output CMat4, which is (0, 0, 0).*/
+    virtual void CalcRotateMatZaxisToNormal(const CVec3& Xi_Normal, CMat4& Xo_RotateMat, const CVec3& Xi_Pos = CVec3(0, 0, 0));
   };
  
 

@@ -203,7 +203,7 @@ namespace tpcl
     }
 
     //find normals:
-    const float maxDistForPlane = m_voxelSize * 2;
+    const float maxDistForPlane = 4;// m_voxelSize * 2;
     feat.FillNormals(gridPositions, maxDistForPlane, &mainHashed, true);
 
     int preSize = m_size;
@@ -218,19 +218,7 @@ namespace tpcl
       gridPositions.m_pos[index] = gridPositions.m_pos[index] + (in_d_sensor * gridPositions.m_normal[index]);
 
       //find refFrame matrix:
-      //zVec = gridPositions.m_normal[index]
-      CVec3 xVec(1, 0, 0);
-      xVec = xVec - DotProd(xVec, gridPositions.m_normal[index])*gridPositions.m_normal[index];
-      Normalize(xVec);
-      CVec3 yVec = CrossProd(gridPositions.m_normal[index], xVec);
-      Normalize(yVec);
-
-      //update transformation matrix:
-      float OrientVals[] = { xVec.x, yVec.x, gridPositions.m_normal[index].x, 0.0f,
-                             xVec.y, yVec.y, gridPositions.m_normal[index].y, 0.0f,
-                             xVec.z, yVec.z, gridPositions.m_normal[index].z, 0.0f,
-                             gridPositions.m_pos[index].x, gridPositions.m_pos[index].y, gridPositions.m_pos[index].z, 1.0f };
-      m_Orient[preSize + index] = CMat4(OrientVals);
+      feat.CalcRotateMatZaxisToNormal(gridPositions.m_normal[index], m_Orient[preSize + index], gridPositions.m_pos[index]);
     }
 
     //release memory:
@@ -429,16 +417,13 @@ namespace tpcl
     {
       CPtCloud ptsTran;
       ptsTran.m_pos = new CVec3[m_pclMain.m_numPts];
+      ptsTran.m_numPts = 0;
 
       CMat4 orients = m_Orient[in_entryIndex];
-      CVec3 MatRow0 = CVec3(orients.m[0][0], orients.m[0][1], orients.m[0][2]);
-      CVec3 MatRow1 = CVec3(orients.m[1][0], orients.m[1][1], orients.m[1][2]);
-      CVec3 MatRow2 = CVec3(orients.m[2][0], orients.m[2][1], orients.m[2][2]);
       CVec3 Pos     = CVec3(orients.m[3][0], orients.m[3][1], orients.m[3][2]);
 
       //transform main point cloud to grid point's orientation:
       //#pragma omp parallel for
-      int num = 0;
       float rMinSqr = m_r_min*m_r_min;
       float rMaxSqr = m_r_max*m_r_max;
 
@@ -452,12 +437,10 @@ namespace tpcl
         if (rQsr > rMaxSqr)
           continue;
 
-        ptsTran.m_pos[num].x = DotProd(posShifted, MatRow0);
-        ptsTran.m_pos[num].y = DotProd(posShifted, MatRow1);
-        ptsTran.m_pos[num].z = DotProd(posShifted, MatRow2);
-        num++;
+        MultiplyVectorRightSide(orients, posShifted, ptsTran.m_pos[ptsTran.m_numPts]);
+
+        ptsTran.m_numPts++;
       }
-      ptsTran.m_numPts = num;
 
       //create descriptor - range image, DFT
       int totalDescSize = m_descHeight * m_descWidth;

@@ -24,6 +24,8 @@
 #ifndef __tpcl_iftr_H
 #define __tpcl_iftr_H
 
+#include "../../include/vec.h"
+
 
 namespace tpcl
 {
@@ -68,6 +70,14 @@ namespace tpcl
      * @param in_voxelSize       size of a voxel in grid. assums bigger than 0
      */
     virtual void DownSample(const CPtCloud& in_pcl, CPtCloud& out_pcl, float in_voxelSize) = 0;
+
+
+    /** finds the rotation matrix so that the new z axis will be in the normal direction. to be used: x_rotated = R * x.
+    * @param Xi_Normal          input normal.
+    * @param Xo_RotateMat       output rotation matrix.
+    * @param Xi_Pos             optional: input vector to replace the default vector in output CMat4, which is (0, 0, 0).*/
+    virtual void CalcRotateMatZaxisToNormal(const CVec3& Xi_Normal, CMat4& Xo_RotateMat, const CVec3& Xi_Pos = CVec3(0, 0, 0)) = 0;
+
 
   protected:
     /** destructor */

@@ -27,6 +27,7 @@
 #include <complex>
 #include "tran.h"
 #include "common.h"
+#include "plane.h"
 
 
 //#define DEBUG_LOCAL_RANGE_IMAGE
@@ -177,26 +178,59 @@ namespace tpcl
     CRegOptions* optsP = (CRegOptions*)m_opts;
     CRegDictionary* dictionaryP = (CRegDictionary*)m_dictionary;
     int* candidates = new int[in_maxCandidates];
+    Features feat;
 
-    //pick points in range:
+    //pick points in range for descriptor and plane (for normal (for rotation matrix)):
     CPtCloud ptsInRange;
+    CPtCloud ptsForPlane;
     ptsInRange.m_pos = new CVec3[in_pcl.m_numPts];
-    int num = 0;
+    ptsForPlane.m_pos = new CVec3[in_pcl.m_numPts];
+    ptsInRange.m_numPts = 0;
+    ptsForPlane.m_numPts = 0;
     float rMinSqr = optsP->m_r_min*optsP->m_r_min;
     float rMaxSqr = optsP->m_r_max*optsP->m_r_max;
+    float maxDistForPlaneSqr = 3 * 3;// optsP->m_voxelSizeLocal * optsP->m_voxelSizeLocal * 4;
+    float minDistForPlaneSqr = 2 * 2;
 
     for (int Index = 0; Index < in_pcl.m_numPts; Index++)
     {
       float rQsr = LengthSqr(in_pcl.m_pos[Index]);
+
+      if ((rQsr <= maxDistForPlaneSqr) && (rQsr >= minDistForPlaneSqr))
+      {
+        ptsForPlane.m_pos[ptsForPlane.m_numPts] = in_pcl.m_pos[Index];
+        ptsForPlane.m_numPts++;
+      }
+
       if (rQsr < rMinSqr)
         continue;
       if (rQsr > rMaxSqr)
         continue;
 
-      ptsInRange.m_pos[num] = in_pcl.m_pos[Index];
-      num++;
+      ptsInRange.m_pos[ptsInRange.m_numPts] = in_pcl.m_pos[Index];
+      ptsInRange.m_numPts++;
     }
-    ptsInRange.m_numPts = num;
+
+    //find plane and normal:
+    CPlane approxPlane;
+    CVec3 local_normal(0, 0, 1); //if no plane was found assume normal already in z direction.
+    if (approxPlane.RanSaC(ptsForPlane.m_numPts, ptsForPlane.m_pos, 0.03f) != 0)
+    {
+      //get normal and normalize it, up:
+      local_normal = approxPlane.GetNormal();
+      if (local_normal.z < 0)
+        local_normal.z = -local_normal.z;
+      Normalize(local_normal);
+    }
+
+    //find refFrame matrix:
+    CMat4 local_orient;
+    feat.CalcRotateMatZaxisToNormal(local_normal, local_orient);
+
+    //Project PC for range image:
+    for (int Index = 0; Index < ptsInRange.m_numPts; Index++)
+      MultiplyVectorRightSide(local_orient, ptsInRange.m_pos[Index], ptsInRange.m_pos[Index]);
+
 
     //create range image:
     float* descriptor = new float[optsP->m_lineWidth * optsP->m_numlines];
@@ -227,6 +261,11 @@ namespace tpcl
     }
 
     int numOfCandidates = dictionaryP->SearchDictionary(in_maxCandidates, optsP->m_searchRange, descriptorDFT, candidates, out_grades, out_rotations, estimatedOrient);
+
+    //TODO: it's now = refFramesGrid_candidates(:,:,i)*R_PhaseCorr(:,:,i)*refFrameLocal';
+    //include local orientation since range image was of trasformed PC.
+    for (int index = 0; index < numOfCandidates; index++)
+      LeftMultiplyKeepVector(out_rotations[index], local_orient, out_rotations[index]);
 
     delete[] descriptor;
     delete[] descriptorDFT;
