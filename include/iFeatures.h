@@ -24,7 +24,7 @@
 #ifndef __tpcl_iftr_H
 #define __tpcl_iftr_H
 
-#include "../../include/vec.h"
+#include "vec.h"
 
 
 namespace tpcl
@@ -81,7 +81,7 @@ namespace tpcl
 
   protected:
     /** destructor */
-    virtual ~IFeatures() = 0;
+    virtual ~IFeatures() {};
     
     friend class CTinyPCL;
   };

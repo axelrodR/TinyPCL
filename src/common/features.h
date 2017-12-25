@@ -23,7 +23,7 @@
 #define __tpcl_ftr_H
 
 
-#include "../include/iFeatures.h"
+#include "../../include/iFeatures.h"
 #include "../../include/vec.h"
 
 /******************************************************************************

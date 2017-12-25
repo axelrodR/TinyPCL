@@ -43,7 +43,7 @@ namespace tpcl
   {
   public:
     /** destructor */
-    virtual ~IRegister() = 0;
+    virtual ~IRegister() {};
 
 
     /** Set main cloud point.

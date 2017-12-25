@@ -1,5 +1,5 @@
 --
--- premake5 file to build RecastDemo
+-- premake5 file to build TinyPCL
 -- http://premake.github.io/
 --
 

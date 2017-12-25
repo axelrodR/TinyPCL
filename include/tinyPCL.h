@@ -40,6 +40,7 @@ namespace tpcl
   /** factory for all tiny-PCL classes */
   class CTinyPCL
   {
+  public:
     /** create a registration service 
      * @param in_type     type of registarion algorithm to use
      */
